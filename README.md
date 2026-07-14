@@ -8,7 +8,7 @@ The current release contains exactly one curated problem: `KP_FROM_EQUILIBRIUM_M
 
 ## Live Demo
 
-A verified live URL will be added only after GitHub Pages deployment and browser validation are complete.
+[Open the verified live demo](https://shhh-hoo.github.io/standard-trainer-demo/)
 
 ## What it proves
 
