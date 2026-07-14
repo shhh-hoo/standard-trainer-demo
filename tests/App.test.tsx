@@ -12,6 +12,8 @@ describe("calculation path workbench", () => {
     expect(screen.getAllByTestId("path-step")).toHaveLength(7);
     expect(screen.getByRole("button", { name: "Check calculation path" })).toBeEnabled();
     expect(screen.getByText("Deterministic tools only · No LLM call")).toBeVisible();
+    expect(screen.getByText("Calculation-path engine · Core proof")).toBeVisible();
+    expect(screen.queryByText(/PR 1/)).not.toBeInTheDocument();
   });
 
   it("submits the structured canonical path and shows an exportable trace", async () => {
@@ -45,6 +47,7 @@ describe("calculation path workbench", () => {
     expect(screen.getByRole("heading", { name: "Calculation path verified" })).toBeVisible();
     expect(screen.getByText("Current tab only — export before leaving")).toBeVisible();
     expect(screen.getByRole("button", { name: "Export evidence JSON" })).toBeEnabled();
+    expect(screen.getByRole("heading", { name: "Evidence archive" })).toBeVisible();
     expect(screen.queryByRole("button", { name: /rewrite/i })).not.toBeInTheDocument();
   });
 

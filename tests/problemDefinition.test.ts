@@ -11,14 +11,23 @@ describe("curated problem definition", () => {
     });
 
     const order = kpFromEquilibriumMoles.solutionGraph.orderedStepIds;
+    const steps = kpFromEquilibriumMoles.solutionGraph.steps;
+    const definedStepIds = Object.keys(steps);
     expect(order).toHaveLength(7);
     expect(new Set(order).size).toBe(order.length);
+    expect(new Set(order)).toEqual(new Set(definedStepIds));
+
     for (const [index, stepId] of order.entries()) {
-      const step = kpFromEquilibriumMoles.solutionGraph.steps[stepId];
+      const step = steps[stepId];
+      expect(step).toBeDefined();
       expect(step.id).toBe(stepId);
-      expect(step.dependencies.every((dependency) => order.indexOf(dependency) < index)).toBe(true);
+      for (const dependency of step.dependencies) {
+        expect(order).toContain(dependency);
+        expect(steps[dependency]).toBeDefined();
+        expect(order.indexOf(dependency)).toBeLessThan(index);
+      }
     }
-    expect(kpFromEquilibriumMoles.solutionGraph.steps.kpResult.dependencies).toEqual([
+    expect(steps.kpResult.dependencies).toEqual([
       "partialPressureN2O4",
       "partialPressureNO2",
       "kpExpression",

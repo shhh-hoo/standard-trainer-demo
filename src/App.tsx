@@ -263,7 +263,7 @@ export default function App({ storage, now, createAttemptId }: AppProps) {
       </a>
       <header className="hero">
         <div>
-          <p className="eyebrow">Calculation-path engine · PR 1</p>
+          <p className="eyebrow">Calculation-path engine · Core proof</p>
           <h1>{kpFromEquilibriumMoles.title}</h1>
           <p className="hero-copy">
             Enter each calculation step separately. The engine stops at the first invalid step
@@ -331,7 +331,7 @@ export default function App({ storage, now, createAttemptId }: AppProps) {
           )}
           {traces.length > 0 ? (
             <div className="archive-list">
-              <h3>Current-tab archive</h3>
+              <h3>Evidence archive</h3>
               {traces.map((trace) => (
                 <article key={trace.traceId}>
                   <span>{trace.decision.replaceAll("_", " ")}</span>
