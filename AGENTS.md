@@ -2,9 +2,9 @@
 
 ## Repository Role
 
-This repository contains the runnable Calculation Path Trainer demo. Sprint planning, research, product specifications, eval design, and portfolio evidence live in [10-Day-Challenge](https://github.com/shhh-hoo/10-Day-Challenge).
+This repository contains the runnable Calculation Path Trainer proof, its public product rationale, architecture, tests, and release evidence. Broader private planning materials are maintained separately and are not part of this repository.
 
-The repositories are independent siblings, not Git submodules. Do not copy the other repository into this one.
+This repository is independent, not a Git submodule. Do not copy separate private planning materials into it.
 
 ## Product Boundary
 
@@ -14,7 +14,8 @@ The initial core loop is structured student steps -> deterministic tool checks -
 
 ## Implementation Rules
 
-- Link the relevant challenge specification and commit in each product PR.
+- Link a public specification, decision record, case study section, or issue in each product PR when one exists.
+- Do not place inaccessible private-repository links in public evidence.
 - Keep implementation diffs scoped to one accepted ticket.
 - Keep the domain engine pure and deterministic.
 - Treat decisions and failure codes as separate fields.
