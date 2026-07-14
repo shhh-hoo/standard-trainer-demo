@@ -1,32 +1,51 @@
-# Standards-First Learning Trainer Demo
+# Calculation Path Trainer Demo
 
-Runnable product repository for the A-Level Chemistry Dynamic Equilibrium Concept Boundary Trainer.
+Runnable proof of a deterministic chemistry calculation-path engine. The product direction is calculation-path diagnosis: collect structured working, compare it with a curated canonical solution graph, and identify the first invalid step.
 
-## Repository Relationship
+This repository is an independent sibling of [10-Day-Challenge](https://github.com/shhh-hoo/10-Day-Challenge). Planning and portfolio evidence live there; runnable product code lives here.
 
-This repository is an independent sibling of [10-Day-Challenge](https://github.com/shhh-hoo/10-Day-Challenge), not a Git submodule.
+## First PR scope
 
-- Challenge repository: sprint plan, PRD, architecture, AI/eval specifications, market research, interview preparation, status, and portfolio evidence.
-- Demo repository: application code, runnable fixtures, implementation tests, demo instructions, and deployment configuration.
+The implementation contains exactly one curated problem:
 
-The challenge repository links to demo PRs and results. Neither repository tracks the other's commit pointer.
+`KP_FROM_EQUILIBRIUM_MOLES`
 
-## Canonical Specifications
+It proves:
 
-- [Product requirements](https://github.com/shhh-hoo/10-Day-Challenge/blob/main/docs/product/PRD.md)
-- [Architecture](https://github.com/shhh-hoo/10-Day-Challenge/blob/main/docs/architecture/ARCHITECTURE.md)
-- [Answer-judgement harness](https://github.com/shhh-hoo/10-Day-Challenge/blob/main/docs/ai/HARNESS_SPEC.md)
-- [Evaluation plan](https://github.com/shhh-hoo/10-Day-Challenge/blob/main/docs/evals/EVAL_PLAN.md)
-- [Implementation task template](https://github.com/shhh-hoo/10-Day-Challenge/blob/main/docs/implementation/CODEX_TASK_TEMPLATE.md)
+- a versioned `ProblemDefinition` and canonical solution graph;
+- seven structured student-step inputs with explicit dependency edges;
+- deterministic numeric, curated-expression, unit, and significant-figure tools;
+- first-invalid-step identification with separate decision and failure codes;
+- versioned evidence traces, honest browser persistence, and JSON export;
+- a responsive, keyboard-accessible React workbench;
+- no LLM call.
 
-## Current State
+## Run locally
 
-Repository initialized; product code has not been implemented.
+```bash
+npm install
+npm run dev
+```
 
-## First Implementation Ticket
+Verification:
 
-After Day 1-3 acceptance gates pass, build the smallest local three-panel loop using static Dynamic Equilibrium data and deterministic checks:
+```bash
+npm run check
+npm test
+npm run build
+```
 
-`standard panel -> student answer -> feedback -> forced rewrite -> evidence archive`
+## Architecture
 
-Exclude live AI, production authentication, Stripe, broad content ingestion, and autonomous agents from this ticket.
+- `src/domain/` contains pure evaluation, deterministic tools, trace validation, and persistence boundaries.
+- `src/fixtures/` contains the single immutable curated problem and its canonical graph.
+- `src/App.tsx` translates labeled structured inputs into a submission and renders the resulting trace.
+- `tests/` exercises public behavior through the engine, archive, and workbench interfaces.
+
+The engine stops after the first invalid step. Later values are marked `NOT_EVALUATED`; this PR does not claim error-carried-forward correctness.
+
+## Explicit exclusions
+
+This PR does not include natural-language step parsing, arbitrary question parsing, generated questions, LLM or agent orchestration, bounded ECF, learner weakness modelling, hints, or next-problem selection. Those are separate later tickets.
+
+See [Calculation Path Core](docs/CALCULATION_PATH_CORE.md) for the graph and evidence contract, and [Demo](docs/DEMO.md) for a short walkthrough.
