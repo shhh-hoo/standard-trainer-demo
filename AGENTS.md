@@ -2,25 +2,26 @@
 
 ## Repository Role
 
-This repository contains the runnable Standards-First Learning Trainer demo. Sprint planning, market research, product specifications, eval design, interview preparation, and portfolio evidence live in [10-Day-Challenge](https://github.com/shhh-hoo/10-Day-Challenge).
+This repository contains the runnable Calculation Path Trainer demo. Sprint planning, research, product specifications, eval design, and portfolio evidence live in [10-Day-Challenge](https://github.com/shhh-hoo/10-Day-Challenge).
 
 The repositories are independent siblings, not Git submodules. Do not copy the other repository into this one.
 
 ## Product Boundary
 
-Build a Cambridge A-Level Chemistry Dynamic Equilibrium Concept Boundary Trainer, not a generic chatbot or study helper.
+Build a Cambridge A-Level Chemistry calculation-path diagnosis product, not a generic chatbot or study helper.
 
-The core loop is answer -> standard-grounded judgement -> missing-element explanation -> rewrite -> second judgement -> evidence archive -> expert review when uncertain.
+The initial core loop is structured student steps -> deterministic tool checks -> first-invalid-step diagnosis -> versioned evidence trace.
 
 ## Implementation Rules
 
 - Link the relevant challenge specification and commit in each product PR.
 - Keep implementation diffs scoped to one accepted ticket.
-- Use deterministic rubric checks first, constrained model judgement second, verifier third, and human review fallback.
-- Route all model calls through a server-side AI gateway or explicit mock gateway.
-- Never expose provider, billing, or service-role secrets in client code.
-- Label mock auth, usage, billing, and AI-draft content clearly.
-- Add the smallest relevant test or eval for non-trivial behavior.
+- Keep the domain engine pure and deterministic.
+- Treat decisions and failure codes as separate fields.
+- Derive trace versions from immutable problem and graph definitions, not UI input.
+- Add the smallest relevant test for non-trivial behavior.
+- Do not add LLM calls, arbitrary parsers, question generation, or a general ECF claim without a later accepted ticket.
+- If later tickets add model calls, route them through a server-side gateway and never expose provider or service-role secrets in client code.
 - Do not implement real Stripe in V0.
 
 ## Git Rule
