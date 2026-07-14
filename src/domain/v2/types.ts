@@ -1,4 +1,4 @@
-export const V2_CONTRACT_VERSION = "2.0.0-draft.1" as const;
+export const V2_CONTRACT_VERSION = "2.0.0-draft.2" as const;
 
 export type LearnerMode = "TRY_IT_YOURSELF" | "GUIDE_ME";
 
@@ -54,7 +54,7 @@ export type DiagnosisDecision =
   | "RECOGNITION_UNCERTAIN"
   | "NOT_SOLVED";
 
-export type MasteryOutcome =
+export type AttemptSupportOutcome =
   | "SOLVED_INDEPENDENTLY"
   | "SOLVED_AFTER_METACOGNITIVE_PROMPT"
   | "SOLVED_AFTER_STRATEGY_HINT"
@@ -81,18 +81,20 @@ export type ChemistryConcept =
   | "KP_EXPRESSION"
   | "KP_RESULT";
 
-export type RecognitionStatus =
-  | "CONFIRMED"
-  | "ABOVE_AUTHORED_THRESHOLD"
-  | "REQUIRES_CONFIRMATION"
-  | "ABSTAINED";
-
 export type ReasoningEvidenceKind =
   | "EXPLICIT_STEP"
-  | "EMBEDDED_EXPRESSION"
+  | "FORMULA_AST"
+  | "EQUATION"
   | "DECLARED_RESULT"
   | "FACT_USE"
-  | "TARGET_STATEMENT";
+  | "TARGET_STATEMENT"
+  | "EMBEDDED_CALCULATION"
+  | "INFERRED";
+
+export type RecognitionGateDecision =
+  | "PASSED"
+  | "REQUIRES_CONFIRMATION"
+  | "ABSTAINED";
 
 export interface BoundingBox {
   readonly x: number;
@@ -110,33 +112,103 @@ export interface AttemptArtifact {
   readonly contentRef: string;
 }
 
-export interface StepSource {
+export interface HandwritingImageSource {
   readonly artifactId: string;
-  readonly modality: InputModality;
-  readonly page?: number;
-  readonly boundingBox?: BoundingBox;
-  readonly textSpan?: string;
+  readonly modality: "HANDWRITING_IMAGE";
+  readonly page: number;
+  readonly boundingBox: BoundingBox;
 }
+
+export interface DigitalInkSource {
+  readonly artifactId: string;
+  readonly modality: "DIGITAL_INK";
+  readonly page: number;
+  readonly boundingBox: BoundingBox;
+}
+
+export interface TextSource {
+  readonly artifactId: string;
+  readonly modality: "TYPED_WORKING" | "EXPLANATION" | "STRUCTURED";
+  readonly textSpan: string;
+}
+
+export type VisualStepSource = HandwritingImageSource | DigitalInkSource;
+export type StepSource = VisualStepSource | TextSource;
 
 export interface RecognitionCandidate {
   readonly transcription: string;
   readonly confidence: number;
 }
 
+export type RecognitionEvidence =
+  | {
+      readonly status: "AUTO_ACCEPTED";
+      readonly confidence: number;
+    }
+  | {
+      readonly status: "STUDENT_CONFIRMED";
+      readonly confidence: number;
+      readonly selectedTranscription: string;
+      readonly candidates: readonly RecognitionCandidate[];
+    }
+  | {
+      readonly status: "REQUIRES_CONFIRMATION";
+      readonly confidence: number;
+      readonly candidates: readonly RecognitionCandidate[];
+    }
+  | {
+      readonly status: "ABSTAINED";
+      readonly confidence: number;
+      readonly reason: string;
+    };
+
 interface RecognitionIssueBase {
   readonly id: string;
-  readonly stepId: string;
-  readonly source: StepSource;
-  readonly reason: "LOW_CONFIDENCE" | "MULTIPLE_PLAUSIBLE_READINGS" | "ILLEGIBLE";
-  readonly candidates: readonly RecognitionCandidate[];
+  readonly reason:
+    | "LOW_CONFIDENCE"
+    | "MULTIPLE_PLAUSIBLE_READINGS"
+    | "ILLEGIBLE"
+    | "CROP_INVALID"
+    | "STEP_BOUNDARY_UNCERTAIN";
 }
 
 export type RecognitionIssue = RecognitionIssueBase &
   (
-    | { readonly status: "OPEN" }
-    | { readonly status: "STUDENT_CONFIRMED"; readonly selectedCandidate: string }
-    | { readonly status: "MODEL_ABSTAINED" }
+    | {
+        readonly scope: "ARTIFACT";
+        readonly artifactId: string;
+        readonly recognition: Extract<RecognitionEvidence, { readonly status: "ABSTAINED" }>;
+      }
+    | {
+        readonly scope: "REGION";
+        readonly source: VisualStepSource;
+        readonly recognition: Exclude<
+          RecognitionEvidence,
+          { readonly status: "AUTO_ACCEPTED" }
+        >;
+      }
+    | {
+        readonly scope: "STEP";
+        readonly stepId: string;
+      }
   );
+
+export type VariableReference =
+  | {
+      readonly source: "AUTHORED_FACT";
+      readonly symbol: string;
+      readonly factId: string;
+    }
+  | {
+      readonly source: "NORMALIZED_STEP_RESULT";
+      readonly symbol: string;
+      readonly stepId: string;
+    }
+  | {
+      readonly source: "REASONING_QUANTITY";
+      readonly symbol: string;
+      readonly reasoningNodeId: string;
+    };
 
 export interface NumberExpression {
   readonly kind: "NUMBER";
@@ -146,7 +218,7 @@ export interface NumberExpression {
 
 export interface VariableExpression {
   readonly kind: "VARIABLE";
-  readonly symbol: string;
+  readonly reference: VariableReference;
 }
 
 export interface BinaryExpression {
@@ -168,10 +240,17 @@ export type ExpressionAst =
   | BinaryExpression
   | FunctionExpression;
 
-export interface VariableReference {
-  readonly symbol: string;
-  readonly refersTo: string;
-  readonly sourceStepId?: string;
+export interface QuantityValue {
+  readonly value: number;
+  readonly unit?: string;
+  readonly significantFigures?: number;
+  readonly raw?: string;
+}
+
+export interface EquationEvidence {
+  readonly target: VariableReference;
+  readonly expression: ExpressionAst;
+  readonly declaredResult?: QuantityValue;
 }
 
 export interface FactUse {
@@ -182,35 +261,41 @@ export interface FactUse {
 }
 
 export interface TargetInterpretation {
-  readonly quantity: "KP";
+  readonly quantity: "KP" | "KC" | "OTHER";
   readonly evidenceStepIds: readonly string[];
   readonly explicit: boolean;
 }
 
 export interface NormalizedStep {
   readonly id: string;
+  readonly revisionId: string;
   readonly source: StepSource;
   readonly rawTranscription: string;
   readonly semanticType: SemanticType;
   readonly concept: ChemistryConcept | null;
-  readonly expressionAst?: ExpressionAst;
-  readonly inputs?: readonly VariableReference[];
-  readonly declaredResult?: number;
-  readonly unit?: string;
-  readonly significantFigures?: number;
-  readonly recognitionConfidence: number;
-  readonly recognitionStatus: RecognitionStatus;
-  readonly ambiguities: readonly RecognitionCandidate[];
-  readonly studentConfirmed: boolean;
+  readonly formulaAst?: ExpressionAst;
+  readonly calculation?: EquationEvidence;
+  readonly recognition: RecognitionEvidence;
 }
 
 export interface AssistanceEvent {
+  readonly id: string;
+  readonly sequence: number;
   readonly stage: DiagnosisCategory;
   readonly level: 1 | 2 | 3 | 4;
   readonly hintId: string;
   readonly trigger: "LEARNER_REQUEST" | "CONSECUTIVE_FAILURES";
-  readonly revealedConcepts: readonly string[];
+  readonly revealedReasoningNodeIds: readonly string[];
+  readonly revealedContentIds: readonly string[];
   readonly timestamp: string;
+}
+
+export interface AttemptRevision {
+  readonly id: string;
+  readonly sequence: number;
+  readonly submittedAt: string;
+  readonly stepIds: readonly string[];
+  readonly precededByAssistanceEventIds: readonly string[];
 }
 
 export interface NormalizedAttempt {
@@ -224,11 +309,8 @@ export interface NormalizedAttempt {
   readonly factsUsed: readonly FactUse[];
   readonly target: TargetInterpretation | null;
   readonly steps: readonly NormalizedStep[];
-  readonly finalAnswer: {
-    readonly value?: number;
-    readonly unit?: string;
-    readonly significantFigures?: number;
-  } | null;
+  readonly revisions: readonly AttemptRevision[];
+  readonly finalAnswer: QuantityValue | null;
   readonly recognitionIssues: readonly RecognitionIssue[];
   readonly assistanceEvents: readonly AssistanceEvent[];
 }
@@ -245,24 +327,29 @@ export interface ReasoningNodeDefinition {
   readonly id: string;
   readonly category: DiagnosisCategory;
   readonly concept: ChemistryConcept | null;
-  readonly requiredForSolution: boolean;
-  readonly explicitWorkingRequired: boolean;
   readonly dependencies: readonly string[];
-  readonly acceptableEvidence: readonly ReasoningEvidenceKind[];
+  readonly solutionEvidenceKinds: readonly ReasoningEvidenceKind[];
+  readonly independentStageEvidenceKinds: readonly ReasoningEvidenceKind[];
+}
+
+export interface StrategyNodeRequirement {
+  readonly nodeId: string;
+  readonly requirement: "REQUIRED" | "OPTIONAL";
+  readonly allowedEvidenceKinds: readonly ReasoningEvidenceKind[];
 }
 
 export interface AcceptedStrategyDefinition {
   readonly id: string;
   readonly label: string;
-  readonly requiredNodeIds: readonly string[];
-  readonly optionalNodeIds: readonly string[];
+  readonly nodeRequirements: readonly StrategyNodeRequirement[];
 }
 
 export interface HintDefinition {
   readonly id: string;
   readonly stage: DiagnosisCategory;
   readonly level: 1 | 2 | 3 | 4;
-  readonly reveals: readonly string[];
+  readonly revealedReasoningNodeIds: readonly string[];
+  readonly revealedContentIds: readonly string[];
 }
 
 export interface DiagnosticProblemDefinitionV2 {
@@ -278,6 +365,11 @@ export interface DiagnosticProblemDefinitionV2 {
     readonly acceptedUnits: readonly string[];
     readonly significantFigures: number;
   };
+  readonly formulaDefinitions: readonly {
+    readonly id: string;
+    readonly targetReasoningNodeId: string;
+    readonly expression: ExpressionAst;
+  }[];
   readonly reasoningGraph: {
     readonly version: string;
     readonly pedagogicalOrder: readonly string[];
@@ -306,10 +398,11 @@ export interface ExpectedStageEvaluation {
 }
 
 export interface ExpectedDiagnosis {
+  readonly recognitionGateDecision: RecognitionGateDecision;
   readonly decision: DiagnosisDecision;
   readonly failureCode: DiagnosisFailureCode | null;
   readonly firstPedagogicalError: DiagnosisCategory | null;
-  readonly masteryOutcome: MasteryOutcome;
+  readonly attemptSupportOutcome: AttemptSupportOutcome;
   readonly stageEvaluations: readonly ExpectedStageEvaluation[];
 }
 
@@ -324,7 +417,7 @@ export interface ReasoningAlignmentEvidence {
   readonly normalizedStepId: string;
   readonly reasoningNodeIds: readonly string[];
   readonly confidence: number;
-  readonly basis: "EXPLICIT" | "EMBEDDED" | "INFERRED";
+  readonly evidenceKind: ReasoningEvidenceKind;
 }
 
 export interface DeterministicCheckEvidence {
@@ -351,7 +444,7 @@ export interface DiagnosticEvidenceTraceV2 {
     readonly modelVersion?: string;
     readonly promptVersion?: string;
   };
-  readonly recognitionDecision: RecognitionStatus;
+  readonly recognitionGateDecision: RecognitionGateDecision;
   readonly recognitionIssues: readonly RecognitionIssue[];
   readonly alignmentEvidence: readonly ReasoningAlignmentEvidence[];
   readonly deterministicChecks: readonly DeterministicCheckEvidence[];
@@ -360,6 +453,7 @@ export interface DiagnosticEvidenceTraceV2 {
   readonly failureCode: DiagnosisFailureCode | null;
   readonly firstPedagogicalError: DiagnosisCategory | null;
   readonly assistanceEvents: readonly AssistanceEvent[];
-  readonly masteryOutcome: MasteryOutcome;
+  readonly revisions: readonly AttemptRevision[];
+  readonly attemptSupportOutcome: AttemptSupportOutcome;
   readonly submittedAt: string;
 }

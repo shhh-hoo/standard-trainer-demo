@@ -48,7 +48,7 @@ This is not tamper-proof storage. `localStorage` and exported JSON are controlle
 
 ## 8. Testing and CI
 
-The frozen V0.1 15-test suite covers the valid canonical path, the four deterministic check dimensions, Unicode-subscript expression input, first-invalid-step stopping behavior, missing steps, graph consistency, evidence validation, persistence fallbacks, JSON export, and key UI outcomes. The graph tests verify both dependency existence and order and ensure the step map has no orphan definitions. The proposed V2 measurement contract adds five fixture-integrity tests without changing the V0.1 runtime.
+The frozen V0.1 15-test suite covers the valid canonical path, the four deterministic check dimensions, Unicode-subscript expression input, first-invalid-step stopping behavior, missing steps, graph consistency, evidence validation, persistence fallbacks, JSON export, and key UI outcomes. The graph tests verify both dependency existence and order and ensure the step map has no orphan definitions. The hardened V2 measurement contract adds fifteen fixture-integrity tests for recomputable equations, strategy evidence, recognition gating, diagnosis coverage, and assistance causality without changing the V0.1 runtime.
 
 GitHub Actions installs from the lockfile, type-checks, runs the tests, and creates a production build. A separate Pages workflow repeats verification before producing the deployable artifact. This makes the public demo downstream of the same checks used for engineering review.
 

@@ -1,70 +1,73 @@
 # V2 Unified Multimodal + Guided Trainer Measurement Contract
 
-Status: `draft.1`, proposed by PR #5
+Status: `draft.2`, proposed by PR #5
 
-Contract version: `2.0.0-draft.1`
+Contract version: `2.0.0-draft.2`
 
-Gold problem: `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.1`
+Gold problem: `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.2`
 
 ## 1. Decision
 
-Calculation Path Trainer V2 keeps the V0.1 deterministic checking assets but replaces the fixed seven-field learner contract with a modality-neutral evidence contract. Every learner artifact is interpreted into one `NormalizedAttempt`; graph alignment, deterministic checks, diagnosis, hint policy, and evidence tracing operate only on that normalized form.
+Calculation Path Trainer V2 keeps the frozen V0.1 deterministic checking assets but replaces the fixed seven-field learner contract with a modality-neutral evidence contract. Every learner artifact is interpreted into one `NormalizedAttempt`; recognition gating, graph alignment, deterministic checks, diagnosis, and support policy operate only on normalized structure.
 
-V0.1 remains a frozen, runnable baseline. Its seven-step form becomes a future `Guide me` level-4 full scaffold; it is not the default V2 learner experience.
+V0.1 remains the runnable baseline. Its seven-step form may later appear only as `Guide me` level-4 full scaffold. It is not the default V2 experience.
 
-This contract is for Cambridge A-Level Chemistry calculation-path diagnosis. It does not define a generic chatbot, general chemistry marker, or conversational tutor.
+This contract is for Cambridge A-Level Chemistry calculation-path diagnosis. It is not a generic chatbot, a general chemistry marker, or evidence that one solved item establishes mastery.
 
 ## 2. Scope and non-goals
 
 PR #5 defines:
 
-- the two learner modes;
-- the unified attempt schema;
-- a dependency graph that accepts compressed or explicit working;
+- `Try it yourself` and `Guide me`;
+- a unified multimodal attempt schema;
+- formula evidence and independently recomputable calculation evidence;
+- strategy-specific reasoning evidence requirements;
+- solution sufficiency versus independent capability observation;
+- recognition evidence, issue scope, and attempt-level gating;
 - diagnosis decisions, stage statuses, and failure codes;
-- recognition uncertainty and abstention policy;
-- help provenance, the four-level hint ladder, and mastery outcomes;
+- ordered revisions and assistance causality;
+- single-attempt support outcomes;
 - evidence trace V2;
-- an evaluation plan;
-- one Kp gold problem and seven normalized-attempt fixtures.
+- one Kp gold problem and sixteen normalized-attempt fixtures;
+- fifteen V2 contract-integrity tests.
 
 PR #5 does not implement:
 
 - learner UI changes;
-- image upload, digital ink capture, OCR, or a provider API;
 - runtime schema validation;
-- text or multimodal adapters;
-- graph alignment or the V2 diagnosis engine;
-- a model gateway or model calls;
-- hint delivery, retry, transfer items, or learner mastery persistence;
-- agent orchestration, arbitrary parsing, generated questions, or general ECF.
+- structured, typed, or multimodal adapters;
+- graph alignment or a V2 diagnosis engine;
+- image upload, digital ink capture, OCR, or provider APIs;
+- a server endpoint, model gateway, or model call;
+- hint delivery, retry orchestration, or a transfer item;
+- question generation, arbitrary parsing, agent orchestration, or general ECF.
 
-Those boundaries preserve a reviewable measurement contract before probabilistic interpretation is introduced.
+The contract is intentionally fixed before probabilistic interpretation is introduced.
 
 ## 3. Learner modes
 
 ### 3.1 Try it yourself
 
-The learner sees only the original problem statement. The product does not reveal curated givens, the seven-step path, step instructions, intermediate answer fields, or a preferred strategy.
-
-The answer may be handwriting images, digital ink, typed working, an explanation, structured input, or a mixture. “Explanation” is an answer artifact, not a requirement for a chat interface.
+The learner sees the original problem only. Curated givens, a preferred path, instructions, and intermediate fields are not revealed. Work may be handwriting, digital ink, typed calculation, explanation, structured input, or a mixture.
 
 The pipeline contract is:
 
 ```text
 raw artifacts
 → interpretation candidates
-→ normalized steps and recognition evidence
-→ local confirmation where required
+→ normalized steps and equations
+→ recognition gate
 → reasoning-graph alignment
-→ deterministic checks
+→ deterministic recomputation
 → diagnosis policy
 → evidence trace
 ```
 
+An explanation is an answer artifact, not a requirement for a chat interface.
+
 ### 3.2 Guide me
 
-The learner still starts from the original problem. Stages are exposed progressively:
+The learner still begins from the original problem. Stages are released progressively:
 
 1. What is the question asking?
 2. Which information matters?
@@ -74,111 +77,173 @@ The learner still starts from the original problem. Stages are exposed progressi
 6. Complete the calculation.
 7. Check units and precision.
 
-The same modalities and `NormalizedAttempt` contract apply. A hint is released only after a learner request or an authored failure policy. Every release produces an `AssistanceEvent`. The fixed V0.1 form is level 4, not a separate marking system.
+The same `NormalizedAttempt` schema applies. A hint is released only after a learner request or the authored consecutive-failure policy. Each hint and each learner submission is globally ordered so the trace can establish whether work occurred before or after assistance.
 
 ## 4. Unified attempt contract
 
-The normative TypeScript schema is [`src/domain/v2/types.ts`](../src/domain/v2/types.ts). It is compile-time only in PR #5; runtime validation belongs to PR #6.
+The normative TypeScript schema is [`src/domain/v2/types.ts`](../src/domain/v2/types.ts). It is a compile-time contract in PR #5; runtime validation belongs to PR #6.
 
 `NormalizedAttempt` contains:
 
-- immutable contract, problem, and attempt identity;
+- immutable contract and problem identity;
 - learner mode and overall modality;
-- one or more source artifacts, allowing mixed modality;
-- facts actually used, not facts the interpreter assumes the learner noticed;
-- the learner's target interpretation when observed;
-- ordered normalized steps with source regions or text spans;
-- optional expression ASTs, variable dependencies, values, units, and precision;
+- source artifacts;
+- facts actually used;
+- target interpretation when observed;
+- normalized steps;
+- ordered revisions;
 - final answer when present;
-- recognition issues and confirmation state;
+- recognition issues;
 - assistance events.
 
-`modality: MIXED` is used when step sources come from more than one input modality. Every step still names its own source modality and artifact.
+`modality: MIXED` is used when more than one input modality contributes. Each step retains one precise source.
 
-The schema separates raw transcription from semantics. A model or adapter may propose `semanticType`, `concept`, `expressionAst`, and variable mappings, but those proposals are evidence for later deterministic evaluation, not correctness decisions.
+### 4.1 Modality-aware source evidence
 
-### 4.1 Source evidence
+`StepSource` is a discriminated union:
 
-An image-derived step names its artifact, page, normalized bounding box, and transcription. A text-derived step names its artifact and text span. A diagnosis must be traceable back to one or more source regions or spans.
+- handwriting and digital ink require `artifactId`, page, and normalized bounding box;
+- typed working, explanation, and structured input require `artifactId` and text span.
 
-Bounding boxes use a normalized `0..1` coordinate space so the evidence remains meaningful across display sizes. A future image implementation must retain the original artifact or a stable content reference; the box alone is not sufficient evidence.
+This prevents obviously invalid source combinations at compile time. Every source artifact ID and modality must resolve inside the attempt. Bounding boxes use normalized `0..1` coordinates.
 
-### 4.2 Recognition state
+Recognition issues may be scoped before or after step segmentation:
 
-Each step records confidence, candidates, whether the student confirmed it, and one of:
+- `ARTIFACT` for an unreadable page or invalid crop;
+- `REGION` for a local visual ambiguity before a reliable step boundary exists;
+- `STEP` for an issue attached to an already normalized step.
 
-- `CONFIRMED` — the learner explicitly selected or corrected the transcription;
-- `ABOVE_AUTHORED_THRESHOLD` — no confirmation is required under the problem policy;
-- `REQUIRES_CONFIRMATION` — local confirmation is required before subject diagnosis;
-- `ABSTAINED` — the content cannot safely be interpreted.
+`stepId` is required only for `STEP` scope.
 
-Confidence is not correctness probability. It is a routing signal governed by the authored recognition policy.
+### 4.2 Formula evidence versus calculation evidence
 
-### 4.3 Expression boundary
+Formula knowledge and actual working are separate fields:
 
-`ExpressionAst` is a transport contract for numbers, variables, binary operations, and an authored `SUM` function. PR #5 does not define an arbitrary expression parser or symbolic equivalence engine. Later adapters may only emit AST candidates that pass runtime schema validation; deterministic tools remain the authority for accepted chemistry relationships and values.
+```ts
+interface NormalizedStep {
+  formulaAst?: ExpressionAst;
+  calculation?: EquationEvidence;
+}
 
-## 5. Reasoning graph contract
-
-The V2 graph represents required reasoning dependencies, not required UI fields. A node can be satisfied by an explicit step, embedded expression, declared result, observed fact use, or target statement as authored for that node.
-
-For the gold Kp problem, the required chain is:
-
-```text
-select relevant data ─┐
-                     ├→ choose partial-pressure strategy ─┐
-identify Kp target ──┘                                    │
-identify Kp target → construct Kp expression ─────────────┤
-                                                          ↓
-                                                 substitute values
-                                                          ↓
-                                                  calculate result
-                                                     ↙          ↘
-                                              report unit   report precision
+interface EquationEvidence {
+  target: VariableReference;
+  expression: ExpressionAst;
+  declaredResult?: QuantityValue;
+}
 ```
 
-The optional explicit nodes are:
+`formulaAst` expresses a chemistry relationship such as:
 
-- total moles;
-- mole fraction of N₂O₄;
-- mole fraction of NO₂;
-- partial pressure of N₂O₄;
-- partial pressure of NO₂.
+```text
+Kp = p(NO₂)² / p(N₂O₄)
+```
 
-Optional means the learner is not required to write a separate line. The reasoning evidence must still exist inside the accepted strategy. One compressed expression may align to strategy, formula, substitution, arithmetic, unit, and precision nodes simultaneously.
+`calculation.expression` expresses the calculation the learner actually performed. For compressed working it contains the full dependency structure:
 
-### 5.1 Accepted strategies for the gold problem
+```text
+[(n(NO₂) / (n(NO₂) + n(N₂O₄)) × Ptotal)²]
+──────────────────────────────────────────────────────────
+ [n(N₂O₄) / (n(NO₂) + n(N₂O₄)) × Ptotal]
+```
 
-Two strategies are authored:
+`declaredResult` records the learner's reported value, unit, significant figures, and source-facing raw form. This permits deterministic tools to:
 
-1. `EXPLICIT_PARTIAL_PRESSURES` — calculate total moles, mole fractions, and both partial pressures before substituting into Kp.
-2. `COMPRESSED_DIRECT_SUBSTITUTION` — embed the same partial-pressure dependencies in one Kp expression.
+1. resolve every authored fact or prior step;
+2. recompute the expression;
+3. compare recomputed and declared values;
+4. check unit and precision independently.
 
-Both use equilibrium amounts to obtain partial pressures and use `Kp = p(NO₂)² / p(N₂O₄)`. Directly substituting equilibrium mole amounts into the pressure expression is not a third accepted strategy; it is `WRONG_DEPENDENCY_USED`.
+Deterministic diagnosis must not parse `rawTranscription`, trust an interpreter correctness label, or infer working from the final answer. Raw transcription remains provenance only.
 
-Adding another valid chemistry method requires a new immutable problem/graph version and gold fixtures. It must not be silently inferred at runtime.
+### 4.3 Stable variable references
 
-### 5.2 Data-selection observability
+Every variable AST node is one of:
 
-Fact use and data-selection mastery are distinct. If a learner uses `0.400`, `0.600`, and `500` correctly but never explicitly identifies which data matter, the system can record those `factsUsed`; it cannot claim the learner demonstrated data extraction. The `DATA_EXTRACTION` stage is therefore `NOT_OBSERVED`.
+- `AUTHORED_FACT` with a versioned fact ID;
+- `NORMALIZED_STEP_RESULT` with a prior normalized step ID;
+- `REASONING_QUANTITY` with an authored graph node ID.
 
-Explicitly selecting the required facts and excluding the vessel volume can support `CORRECT`. Explicitly selecting the volume as necessary can support `IRRELEVANT_DATA_USED`. Absence of a selection statement is not an error by itself and does not prevent an otherwise valid solution from being `SOLVED`.
+A free string symbol is not a resolvable variable. Symbols remain display labels; source IDs are the authority.
+
+### 4.4 Significant-figure evidence
+
+A numeric value such as `450` does not by itself prove two or three significant figures. Gold artifacts therefore use unambiguous source forms such as:
+
+```text
+4.50 × 10² kPa
+4.5 × 10² kPa
+0.900
+```
+
+Every final significant-figure claim must have matching `QuantityValue.raw` and source transcription.
+
+## 5. Reasoning graph and strategy contract
+
+The graph describes semantic nodes and dependencies. It does not own requiredness. `AcceptedStrategyDefinition.nodeRequirements` is the only authority for whether a node is required on a particular accepted path.
+
+Each strategy requirement records:
+
+```ts
+interface StrategyNodeRequirement {
+  nodeId: string;
+  requirement: "REQUIRED" | "OPTIONAL";
+  allowedEvidenceKinds: ReasoningEvidenceKind[];
+}
+```
+
+The required reasoning dependencies remain:
+
+```text
+relevant facts + Kp target
+→ partial-pressure strategy
+→ Kp relationship
+→ substitution
+→ arithmetic
+→ unit and precision
+```
+
+### 5.1 Machine-distinct accepted strategies
+
+The gold problem authors two structurally different strategies.
+
+| Evidence | Explicit partial pressures | Compressed direct substitution |
+| --- | --- | --- |
+| total moles | `EQUATION` or `DECLARED_RESULT` | `EMBEDDED_CALCULATION` |
+| mole fractions | `EQUATION` or `DECLARED_RESULT` | `EMBEDDED_CALCULATION` |
+| partial pressures | `EQUATION` or `DECLARED_RESULT` | `EMBEDDED_CALCULATION` |
+| Kp relationship | `FORMULA_AST` | complete embedded calculation |
+| substitution | separate `EQUATION` | complete embedded calculation |
+
+The explicit strategy therefore requires separately observable intermediate evidence. The compressed strategy permits those same dependencies to be established by one complete calculation AST. Removing an embedded dependency or presenting embedded evidence to the explicit path makes that strategy unsatisfied.
+
+Directly substituting equilibrium amounts into the pressure expression is not an accepted compressed path. It is `WRONG_DEPENDENCY_USED`.
+
+### 5.2 Solution sufficiency versus capability observation
+
+Each reasoning node declares two evidence sets:
+
+- `solutionEvidenceKinds` — enough to satisfy the dependency for solving the item;
+- `independentStageEvidenceKinds` — enough to evaluate that cognitive stage as independently `CORRECT`.
+
+These are intentionally different. Correct use of the three required facts may satisfy the solution dependency through `FACT_USE`, but it does not prove the learner independently identified which data matter. `DATA_EXTRACTION` remains `NOT_OBSERVED` unless there is explicit selection evidence.
+
+`INFERRED` alignment may support navigation or review, but it never independently proves a cognitive stage correct.
 
 ## 6. Diagnosis contract
 
-Decisions, failure codes, and stage statuses are separate fields.
+Decision, failure code, and stage status remain separate fields.
 
 ### 6.1 Trace-level decisions
 
 | Decision | Meaning |
 | --- | --- |
-| `SOLVED` | Sufficient evidence supports a correct result, whether independent or assisted. |
-| `STUDENT_ERROR` | A confirmed, pedagogically meaningful learner error was found. |
+| `SOLVED` | Sufficient confirmed evidence supports a correct result. |
+| `STUDENT_ERROR` | A confirmed pedagogical error was found in an unassisted or partially assisted attempt. |
 | `INCOMPLETE_EVIDENCE` | Observed work is valid so far but does not establish a completed solution. |
-| `RECOGNITION_UNCERTAIN` | Recognition is not safe enough for subject diagnosis. |
-| `NOT_SOLVED` | A guided attempt remains unsolved after the authored level-4 scaffold. |
+| `RECOGNITION_UNCERTAIN` | Recognition must be confirmed or has abstained; no student error may be asserted. |
+| `NOT_SOLVED` | A guided attempt remains incorrect after the authored level-4 scaffold. |
 
-`failureCode` is null for `SOLVED`, `INCOMPLETE_EVIDENCE`, and `RECOGNITION_UNCERTAIN`. Recognition uncertainty is a workflow decision, never a student failure code.
+`RECOGNITION_UNCERTAIN` always has null failure code and null first pedagogical error. `NOT_SOLVED` may retain the confirmed final failure code and first error that remained after full scaffold.
 
 ### 6.2 Cognitive stages and failure codes
 
@@ -197,190 +262,189 @@ Decisions, failure codes, and stage statuses are separate fields.
 
 | Status | Use |
 | --- | --- |
-| `CORRECT` | Confirmed evidence independently satisfies the authored stage contract. |
-| `INCORRECT` | Confirmed evidence establishes a learner error at this stage. |
+| `CORRECT` | Independent confirmed evidence satisfies the stage contract. |
+| `INCORRECT` | Confirmed evidence establishes a learner error. |
 | `AMBIGUOUS_RECOGNITION` | This stage depends on unresolved recognition. |
-| `NOT_OBSERVED` | The learner did not expose enough evidence to judge this capability. |
-| `DOWNSTREAM_AFFECTED` | Evidence is present, but its result inherits an earlier error and no independent error is asserted. |
-| `NOT_EVALUATED` | The stage cannot be safely evaluated under the gating or dependency policy. |
-| `SUPPORTED_BY_HINT` | The stage is satisfied only after an assistance event revealed its required content. |
+| `NOT_OBSERVED` | The learner did not expose enough evidence to judge the capability. |
+| `DOWNSTREAM_AFFECTED` | Evidence is present but inherits an earlier error. |
+| `NOT_EVALUATED` | Recognition or missing dependencies prevent safe evaluation. |
+| `SUPPORTED_BY_HINT` | The stage is satisfied only after assistance revealed required content. |
 
 ### 6.4 First pedagogically meaningful error
 
-After the recognition gate passes, the engine evaluates independently observable stages in authored pedagogical order. The first `INCORRECT` stage with a specific failure code is `firstPedagogicalError` and supplies the trace-level `failureCode`.
+After recognition passes, the first `INCORRECT` stage in authored pedagogical order supplies `firstPedagogicalError` and the trace-level failure code.
 
-The rule is evidence-based rather than “first array mismatch”:
+- `NOT_OBSERVED` is not an error.
+- Missing a separate optional line is not an error when an accepted embedded calculation supplies its dependency.
+- `DOWNSTREAM_AFFECTED` does not invent a second failure.
+- A later stage may remain `CORRECT` when independently verifiable.
+- The policy makes no general error-carried-forward or mark-award claim.
 
-1. `NOT_OBSERVED` is not an error.
-2. A missing optional explicit node is not an error when its dependency is embedded elsewhere.
-3. `DOWNSTREAM_AFFECTED` never replaces the first error and never invents a second error.
-4. `NOT_EVALUATED` is used when dependencies are absent or recognition is gated.
-5. A later stage may still be `CORRECT` if it is independently verifiable. Correct precision, for example, can remain observed even when the formula is inverted.
-6. The engine makes no general error-carried-forward or mark-award claim.
+## 7. Recognition contract
 
-Example: correct partial pressures followed by an inverted Kp expression yields `FORMULA / INVERTED_RELATION`. Its substitution, arithmetic, and unit may be `DOWNSTREAM_AFFECTED`; the learner is not separately accused of arithmetic error.
+Step recognition is a single discriminated union:
 
-## 7. Recognition uncertainty policy
+- `AUTO_ACCEPTED` with confidence;
+- `STUDENT_CONFIRMED` with selected transcription and candidates;
+- `REQUIRES_CONFIRMATION` with candidates;
+- `ABSTAINED` with a reason.
 
-The gold policy authors two thresholds:
+There is no separate `studentConfirmed`, `ambiguities`, or parallel step status that can contradict this union.
 
-- confidence `>= 0.95`: accept the transcription without learner confirmation;
-- confidence `>= 0.70` and `< 0.95`: show the local region and candidates, then require confirmation;
-- confidence `< 0.70`: abstain and request a clearer local artifact or manual transcription.
+### 7.1 Attempt-level gate aggregation
 
-These values are gold-problem policy, not universal model constants. Changing them requires a recognition-policy version change and evaluation evidence.
+The trace uses a separate `RecognitionGateDecision`:
 
-Before deterministic diagnosis, every diagnosis-relevant region must be `CONFIRMED` or `ABOVE_AUTHORED_THRESHOLD`. Otherwise:
+```text
+if any diagnosis-relevant artifact, region, or step is ABSTAINED
+  → ABSTAINED
+else if any diagnosis-relevant step or region REQUIRES_CONFIRMATION
+  → REQUIRES_CONFIRMATION
+else
+  → PASSED
+```
 
-- the trace decision is `RECOGNITION_UNCERTAIN`;
+A mixed attempt may contain auto-accepted and student-confirmed steps while the aggregate gate is simply `PASSED`.
+
+The gold thresholds are:
+
+- confidence `>= 0.95`: auto-accept;
+- confidence `>= 0.70` and `< 0.95`: local confirmation;
+- confidence `< 0.70`: abstain.
+
+Thresholds are versioned authored policy, not universal model constants.
+
+When the gate is not `PASSED`:
+
+- decision is `RECOGNITION_UNCERTAIN`;
+- failure code and first pedagogical error are null;
 - affected stages are `AMBIGUOUS_RECOGNITION` or `NOT_EVALUATED`;
-- `failureCode` and `firstPedagogicalError` are null;
 - the product must not render a student-incorrect claim.
 
-Confirmation is local. If only `0.400` is ambiguous, the learner confirms that region rather than retranscribing the whole page. The selected candidate and source region are retained in the trace.
+Interpretation may transcribe, segment, propose ASTs, map variables, and emit confidence and evidence regions. It may not decide correctness, failure codes, first error, marks, support outcome, or transfer mastery.
 
-Interpretation components may transcribe content, segment steps, propose ASTs, map variables, and attach confidence/evidence regions. They must not decide correctness, failure codes, first pedagogical error, marks, or mastery.
+## 8. Revisions, assistance, and single-attempt support
 
-## 8. Assistance provenance and hint ladder
+`AttemptRevision` records:
 
-Each `AssistanceEvent` records stage, level, authored hint ID, trigger (`LEARNER_REQUEST` or `CONSECUTIVE_FAILURES`), revealed concepts, and timestamp. Events are append-only evidence; changing learner mode or retrying does not erase them. The gold policy permits automatic escalation only after two consecutive failures at the same stage; otherwise help requires a learner request.
+- stable ID;
+- global sequence;
+- submission time;
+- step IDs in that revision;
+- assistance event IDs that immediately precede it.
 
-| Level | Meaning | Mastery impact when solved |
-| --- | --- | --- |
-| 1 | Metacognitive prompt; reveals no chemistry relationship | `SOLVED_AFTER_METACOGNITIVE_PROMPT` |
-| 2 | Strategy hint; reveals the next method class | `SOLVED_AFTER_STRATEGY_HINT` |
-| 3 | Formula hint; reveals an authored relationship | `SOLVED_AFTER_FORMULA_HINT` |
-| 4 | Full scaffold; exposes the V0.1-style structured path | `SOLVED_USING_FULL_SCAFFOLD` |
+`AssistanceEvent` records:
 
-No assistance events yields `SOLVED_INDEPENDENTLY`. Failure after level 4 yields `NOT_SOLVED_AFTER_FULL_SCAFFOLD`. When an attempt is incomplete or recognition-gated, mastery is `INSUFFICIENT_EVIDENCE`.
+- stable ID and global sequence;
+- stage, level, hint ID, and trigger;
+- revealed reasoning-node IDs;
+- stable authored content IDs;
+- timestamp.
 
-If several hints were used, the mastery outcome reflects the highest assistance level that materially supported the successful solution. A stage revealed by a hint is `SUPPORTED_BY_HINT`, not `CORRECT` as independent evidence.
+This establishes a reviewable sequence:
 
-A later transfer attempt must have its own attempt and trace. PR #9 will author the transfer problem and assistance-reduction policy; PR #5 only fixes the evidence fields needed to distinguish training performance from transfer mastery.
+```text
+revision 1: independent incomplete work
+→ assistance event: formula hint
+→ revision 2: corrected work explicitly linked to that event
+```
+
+Hint content is identified by stable graph/formula/content IDs. Arbitrary prose is not the only identity.
+
+### 8.1 Attempt support outcome
+
+PR #5 records `AttemptSupportOutcome`:
+
+- `SOLVED_INDEPENDENTLY`;
+- `SOLVED_AFTER_METACOGNITIVE_PROMPT`;
+- `SOLVED_AFTER_STRATEGY_HINT`;
+- `SOLVED_AFTER_FORMULA_HINT`;
+- `SOLVED_USING_FULL_SCAFFOLD`;
+- `NOT_SOLVED_AFTER_FULL_SCAFFOLD`;
+- `INSUFFICIENT_EVIDENCE`.
+
+This describes how one attempt was completed. It is not a mastery claim. Transfer mastery requires a separate, isomorphic transfer attempt with reduced assistance in PR #9.
 
 ## 9. Evidence trace V2
 
-The normative trace shape is `DiagnosticEvidenceTraceV2` in the TypeScript contract. A trace contains:
+`DiagnosticEvidenceTraceV2` records:
 
-- immutable problem, graph, diagnosis, recognition, and hint-policy versions;
-- interpreter kind and adapter, model, or prompt versions when applicable;
-- the recognition gate decision, issues, candidates, confirmations, and source regions;
-- normalized-step-to-reasoning-node alignment with basis and confidence;
-- deterministic check evidence with tool version and failure code;
-- stage status, trace decision, first pedagogical error, and failure code;
-- assistance events and mastery outcome;
-- attempt identity and submission time.
+- problem, graph, diagnosis, recognition, and hint-policy versions;
+- interpreter/adapter/model/prompt versions when applicable;
+- aggregate recognition gate and scoped recognition issues;
+- normalized-step-to-node alignment with evidence kind;
+- deterministic check evidence and tool versions;
+- stage evaluations, decision, failure, and first error;
+- ordered revisions and assistance events;
+- attempt support outcome;
+- submission identity and time.
 
-Trace versions derive from immutable authored definitions. UI state, learner input, confidence, timestamps, and assistance events are evidence payloads and must not alter version identifiers.
+Versions derive from immutable authored definitions, not UI state or learner input. PR #5 defines this shape only; runtime trace validation and persistence migration are deferred.
 
-The trace preserves decisions and failure codes separately. `RECOGNITION_UNCERTAIN` is a decision with no chemistry failure code. `SUPPORTED_BY_HINT` is stage evidence and does not rewrite a deterministic tool result.
+## 10. Gold problem and fixture matrix
 
-PR #5 defines the shape only. Runtime validation, persistence migration, and JSON export implementation belong to later accepted tickets.
-
-## 10. Gold problem and artifacts
-
-The normative gold definition is [`src/fixtures/v2/kpGoldProblem.ts`](../src/fixtures/v2/kpGoldProblem.ts). Gold attempts and expected outcomes are in [`src/fixtures/v2/kpNormalizedAttempts.ts`](../src/fixtures/v2/kpNormalizedAttempts.ts).
+The normative definition is [`src/fixtures/v2/kpGoldProblem.ts`](../src/fixtures/v2/kpGoldProblem.ts). Fixtures and expected outcomes are in [`src/fixtures/v2/kpNormalizedAttempts.ts`](../src/fixtures/v2/kpNormalizedAttempts.ts).
 
 | Fixture | Contract behavior |
 | --- | --- |
-| `HANDWRITING_COMPLETE_CORRECT` | Concrete normalized output for a complete page with source boxes and an independent solution. |
-| `TYPED_COMPRESSED_CORRECT` | One line aligns to multiple graph nodes; data extraction remains `NOT_OBSERVED`. |
-| `EXPLANATION_STRATEGY_ONLY` | Target, strategy, and formula can be judged; later stages are `NOT_OBSERVED`. |
-| `TYPED_INVERTED_FORMULA` | First pedagogical error is `FORMULA / INVERTED_RELATION`; downstream work is affected. |
-| `TYPED_WRONG_SUBSTITUTION_DEPENDENCY` | Correct formula followed by use of amounts instead of partial pressures. |
-| `HANDWRITING_RECOGNITION_UNCERTAIN` | Open `0.400 / 0.460` ambiguity forces abstention, not a student error. |
-| `GUIDED_SOLVED_AFTER_FORMULA_HINT` | Mixed-modality success retains level-3 assistance provenance. |
+| `HANDWRITING_COMPLETE_CORRECT` | Explicit equations for total moles, mole fractions, both partial pressures, and final substitution. |
+| `TYPED_COMPRESSED_CORRECT` | One complete AST satisfies compressed dependencies; data extraction remains unobserved. |
+| `EXPLANATION_STRATEGY_ONLY` | Target, strategy, and formula observed; calculation stages unobserved. |
+| `TYPED_INVERTED_FORMULA` | `FORMULA / INVERTED_RELATION`. |
+| `TYPED_WRONG_SUBSTITUTION_DEPENDENCY` | `SUBSTITUTION / WRONG_DEPENDENCY_USED`. |
+| `HANDWRITING_RECOGNITION_UNCERTAIN` | Local candidates require confirmation and block diagnosis. |
+| `GUIDED_SOLVED_AFTER_FORMULA_HINT` | Pre-hint revision, formula event, and linked successful revision. |
+| `DATA_IRRELEVANT_VOLUME_USED` | `DATA_EXTRACTION / IRRELEVANT_DATA_USED`. |
+| `TARGET_MISIDENTIFIED_AS_KC` | `TARGET_IDENTIFICATION / TARGET_MISIDENTIFIED`. |
+| `STRATEGY_USES_CONCENTRATION_ROUTE` | `STRATEGY / WRONG_METHOD`. |
+| `ARITHMETIC_ERROR_AFTER_CORRECT_SUBSTITUTION` | Correct recomputable expression with wrong declared result. |
+| `FINAL_UNIT_ERROR` | Correct expression and value with `UNIT / UNIT_ERROR`. |
+| `FINAL_PRECISION_ERROR` | Correct value/unit with explicit two-significant-figure source. |
+| `HANDWRITING_BELOW_THRESHOLD_ABSTAIN` | Artifact-level abstention before segmentation. |
+| `HANDWRITING_CONFIRMED_THEN_DIAGNOSED` | Student-confirmed reading passes gate and is then diagnosed normally. |
+| `GUIDED_NOT_SOLVED_AFTER_FULL_SCAFFOLD` | Level-4 event precedes a still-invalid revision and `NOT_SOLVED`. |
 
-The fixtures are normalized gold artifacts, not claims that an interpreter can already produce them.
+The fixtures are normalized gold artifacts. They do not claim an interpreter can already produce them.
 
-## 11. Evaluation plan
+## 11. Contract verification and evaluation plan
 
-PR #6 and later adapters must be evaluated against a frozen, human-reviewed gold corpus. Each artifact requires raw source, normalized attempt, graph alignment, stage statuses, first diagnosis, decision, and mastery outcome.
+The V2 contract tests require:
 
-### 11.1 Contract/core gates
+- graph and strategy references resolve;
+- explicit and compressed strategies differ structurally and behaviorally;
+- deleting or exchanging required evidence makes a strategy unsatisfied;
+- all eight cognitive error categories have a gold branch;
+- substitution and arithmetic judgements have structured calculations;
+- all fact, step, reasoning-node, artifact, revision, and assistance references resolve;
+- source modality and source fields agree;
+- recognition union and aggregate gate are distinct;
+- recognition-gated attempts never become student errors;
+- assistance precedes supported revisions;
+- significant-figure claims have source evidence;
+- first error and first incorrect stage agree;
+- no single-attempt result uses the old mastery outcome field.
 
-- 100% runtime-schema acceptance for valid gold fixtures.
-- 100% runtime-schema rejection for deliberately malformed contract fixtures added in PR #6.
-- 100% exact match for gold decision, first pedagogical error, and failure code.
-- 100% exact match for stage statuses in this bounded Kp corpus.
-- 100% exact match for assistance events and mastery outcome.
-- zero required explicit-node errors when an accepted compressed expression contains equivalent evidence.
+PR #6 must add runtime-schema rejection fixtures and implement the contract without reparsing raw text.
 
-### 11.2 Recognition safety gates
-
-- zero `STUDENT_ERROR` decisions while a diagnosis-relevant recognition issue is open.
-- 100% of below-threshold regions retain a local evidence reference and candidates or an abstention reason.
-- 100% of student corrections supersede the model candidate before deterministic checking.
-- report recognition transcription accuracy separately from diagnosis accuracy.
-
-### 11.3 Interpretation/alignment reporting
-
-For typed and later multimodal adapters, report:
+Later adapters must report separately:
 
 - step-boundary precision and recall;
-- semantic-type accuracy;
-- concept-mapping accuracy;
-- AST exact match or authored structural equivalence;
-- graph-node alignment precision and recall;
-- calibration by confidence bucket;
-- abstention rate and false-student-error rate.
+- semantic and concept mapping accuracy;
+- AST exact or authored structural match;
+- graph alignment precision and recall;
+- confidence calibration and abstention rate;
+- false-student-error rate caused by recognition.
 
-No aggregate score may hide a false student-error caused by recognition. That safety error is reported separately and blocks release.
+Any false student-error caused by unresolved recognition blocks release and cannot be hidden in an aggregate score.
 
-### 11.4 Gold expansion rules
+New gold artifacts require chemistry and contract review. New valid strategies, thresholds, or failure semantics require versioned definitions rather than fixture-only exceptions.
 
-A gold artifact must be independently reviewed by a chemistry subject-matter reviewer and a contract reviewer. Disagreement is resolved in the authored problem definition or diagnosis policy before the artifact is accepted. New valid strategies, thresholds, or failure semantics require version changes rather than fixture-only exceptions.
+## 12. Delivery sequence
 
-The initial corpus is deliberately small and proves contract behavior, not model quality or curriculum coverage. PR #8 must add real image artifacts before making multimodal interpretation claims. PR #9 must add an authored isomorphic transfer item before making mastery claims.
+- PR #5: hardened measurement contract and gold corpus.
+- PR #6: runtime validation, V1/structured and typed mock adapters, alignment, deterministic V2 diagnosis, and gold execution.
+- PR #7: `Try it yourself` and `Guide me` UI using mock interpretation.
+- PR #8: bounded server-side multimodal interpretation with local confirmation and no model grading.
+- PR #9: targeted hints, retries, assistance reduction, an authored transfer item, and transfer mastery evidence.
 
-## 12. Acceptance questions
-
-1. **What is the normalized output for a complete handwriting answer?**
-
-   `HANDWRITING_COMPLETE_CORRECT` provides artifact identity, page/region sources, transcriptions, semantic types, concepts, dependencies, results, units, confidence, confirmation state, facts used, target, final answer, and expected diagnosis.
-
-2. **What can be judged when the learner only describes a strategy?**
-
-   Explicit target, strategy, and formula evidence can be judged. Data selection, substitution, arithmetic, unit, and precision remain `NOT_OBSERVED` unless the explanation actually exposes them. The decision is `INCOMPLETE_EVIDENCE`, not incorrect.
-
-3. **How does a compressed expression align?**
-
-   One normalized step may align to multiple required and optional graph nodes through embedded expression and declared-result evidence. Separate total-moles, mole-fraction, and partial-pressure lines are not required.
-
-4. **When does OCR require confirmation or abstain?**
-
-   Gold thresholds are `>=0.95` auto-accept, `0.70..0.95` local confirmation, and `<0.70` abstention. Any open diagnosis-relevant issue blocks chemistry diagnosis.
-
-5. **How is assisted success distinguished?**
-
-   Append-only assistance events record stage, level, hint, concepts, and time. Mastery uses the highest material help level, and revealed stages are `SUPPORTED_BY_HINT`.
-
-6. **Which correct strategies are allowed?**
-
-   The gold problem authors explicit partial-pressure working and a compressed direct-substitution form. New strategies require a versioned definition and gold evidence.
-
-7. **How is the first pedagogical error defined?**
-
-   It is the earliest independently observable `INCORRECT` cognitive stage after recognition gating, with a specific failure code—not the first missing field or numeric array mismatch.
-
-8. **How are downstream stages classified?**
-
-   Use `DOWNSTREAM_AFFECTED` when present evidence inherits an earlier error, `NOT_EVALUATED` when dependencies or recognition prevent judgement, and `CORRECT` only when later evidence is independently verifiable.
-
-9. **What may a model do?**
-
-   It may transcribe, segment, propose ASTs, map variables, and emit confidence and evidence regions. It may not decide correctness, failure codes, first error, marks, hints, or mastery.
-
-10. **What gold evidence is required?**
-
-    Raw artifacts, reviewed normalized attempts, alignment labels, recognition candidates/confirmations, deterministic outcomes, stage statuses, first diagnosis, assistance provenance, and mastery outcome. Multimodal and transfer claims require later real-image and isomorphic-transfer corpora.
-
-## 13. Planned delivery sequence
-
-- PR #5: this measurement contract and gold corpus.
-- PR #6: runtime validation, V1/structured and typed-working mock adapters, alignment, deterministic V2 diagnosis, and gold tests.
-- PR #7: `Try it yourself` and `Guide me` learner UI using mock interpretation.
-- PR #8: bounded server-side multimodal interpreter for this Kp problem, with local confirmation and no model grading.
-- PR #9: targeted hints, retry, assistance reduction, one authored transfer item, and mastery evidence.
-
-No later PR should bypass the recognition gate or duplicate subject judgement by modality.
+No later PR may bypass recognition gating, reparse raw transcription inside deterministic diagnosis, or duplicate subject judgement by modality.

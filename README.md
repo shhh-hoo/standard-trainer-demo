@@ -6,7 +6,7 @@ Calculation Path Trainer is a deterministic chemistry calculation-path diagnosis
 
 The current release contains exactly one curated problem: `KP_FROM_EQUILIBRIUM_MOLES`. It is a bounded engine proof, not a complete learning platform.
 
-V0.1 is now the frozen deterministic baseline. The proposed modality-neutral learner and measurement contract is documented in [V2 Measurement Contract](docs/V2_MEASUREMENT_CONTRACT.md); it defines future behavior and gold artifacts but does not add V2 UI, parsing, OCR, or model calls.
+V0.1 is now the frozen deterministic baseline. The proposed `2.0.0-draft.2` modality-neutral learner and measurement contract is documented in [V2 Measurement Contract](docs/V2_MEASUREMENT_CONTRACT.md); it defines recomputable calculation evidence, recognition gating, guided revisions, and gold artifacts but does not add V2 UI, parsing, OCR, or model calls.
 
 ## Live Demo
 
@@ -61,7 +61,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 20 tests: 15 for the frozen V0.1 runtime and 5 contract-integrity checks for the proposed V2 gold artifacts. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2).
+The current suite contains 30 tests: 15 for the frozen V0.1 runtime and 15 contract-integrity checks for the proposed V2 gold artifacts. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2).
 
 ## Demo walkthrough
 
