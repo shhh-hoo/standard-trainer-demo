@@ -13,7 +13,9 @@ The adapter consumes a `LegacyMemorisationItem` plus its actual runtime context.
 | `as-def-045` | Trainable Dynamic Equilibrium definition | `cambridge-a-level-chem-dynamic-equilibrium-v0.1` |
 | `as-fc-001` | Identity and migration fixture only | None in this PR |
 
-The two expected canonical strings are regression oracles, not hard-coded algorithm outputs. Tests generate each value from stage, level ID, topic, file ID, source ID, kind/type, optional round, and blank index. A mismatch blocks migration and must be investigated.
+The two expected canonical strings are regression oracles, not hard-coded algorithm outputs. The exact frozen helper also preserves the original `level`, `topic`, `packId`, `canonicalSourceId`, and `id` fallbacks; field precedence; empty-round exclusion; and `duplicateKey`. Tests generate each value from runtime context. A mismatch blocks migration and must be investigated.
+
+The identity algorithm itself is pinned alongside the content fixtures: `shhh-hoo/student-site@b514b1c770bac0906632408a7fec8a7da50a4427`, `interactive/9701-memorisation-bank/learning-state-id.mjs`, Git blob `cef4e5e6eaf943241e4a6b2b7fbaa7aded0de44c`. Its fixture creation marker is the same fixed `2026-07-14T00:00:00.000Z`; builds and tests do not generate or rewrite that value.
 
 ## 2. Stable legacy IDs
 

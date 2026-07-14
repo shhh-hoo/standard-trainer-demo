@@ -1,6 +1,17 @@
-import type { FixtureProvenance } from "../domain/types";
+import type { AlgorithmProvenance, FixtureProvenance } from "../domain/types";
 
 export const SNAPSHOT_GENERATED_AT = "2026-07-14T00:00:00.000Z";
+
+export const identityAlgorithmProvenance = Object.freeze<AlgorithmProvenance>({
+  id: "student-site-build-stable-content-id-b514b1c",
+  repository: "shhh-hoo/student-site",
+  commitSha: "b514b1c770bac0906632408a7fec8a7da50a4427",
+  filePath: "interactive/9701-memorisation-bank/learning-state-id.mjs",
+  gitBlobSha: "cef4e5e6eaf943241e4a6b2b7fbaa7aded0de44c",
+  snapshotGeneratedAt: SNAPSHOT_GENERATED_AT,
+  transformationNote:
+    "Exact TypeScript port of buildStableContentId, including all fallback fields, empty-round exclusion, and duplicate keys.",
+});
 
 export const fixtureProvenance = Object.freeze({
   legacyDefinitions: Object.freeze<FixtureProvenance>({
