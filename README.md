@@ -8,7 +8,7 @@ The current release contains exactly one curated problem: `KP_FROM_EQUILIBRIUM_M
 
 ## Live Demo
 
-Deployment will become available after this release PR is merged and GitHub Pages is enabled.
+A verified live URL will be added only after GitHub Pages deployment and browser validation are complete.
 
 ## What it proves
 
@@ -59,7 +59,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 15 tests and is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2). That PR originally produced squash commit `1881d3e`; after the author-email privacy rewrite, the equivalent current `main` commit is `ae59020`.
+The current suite contains 15 tests and is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2).
 
 ## Demo walkthrough
 
@@ -74,4 +74,4 @@ The current suite contains 15 tests and is verified by [GitHub Actions CI](.gith
 
 This project demonstrates AI product boundary judgement, deterministic evaluation design, evidence-oriented architecture, and end-to-end engineering ownership. The key product decision was to prove an inspectable calculation-path core before adding probabilistic parsing or orchestration.
 
-Product planning and research live in the independent [10-Day-Challenge](https://github.com/shhh-hoo/10-Day-Challenge) repository. The relevant direction is fixed in [ADR-001 at `d04ca9b`](https://github.com/shhh-hoo/10-Day-Challenge/blob/d04ca9bdbc3317ce9de2987c521ec66736d946d6/docs/decisions/ADR-001-calculation-coach-pivot.md); runnable product code remains in this repository.
+The public product rationale, scope decisions, trade-offs, and next validated experiments are documented in the local [Case Study](docs/CASE_STUDY.md). Broader private planning materials are maintained separately and are not required to review this proof.
