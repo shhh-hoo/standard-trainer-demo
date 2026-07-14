@@ -5,6 +5,7 @@ import {
   exportAttemptJson,
   type StorageLike,
 } from "../src/domain/evidenceArchive";
+import { isAttemptRecord } from "../src/domain/archiveValidation";
 import type { AttemptRecord } from "../src/domain/types";
 import { createWorkflowState, submitFirstAnswer, type WorkflowDependencies } from "../src/domain/workflow";
 import { activeDynamicEquilibriumStandard } from "../src/fixtures/dynamicEquilibriumStandard";
@@ -33,6 +34,10 @@ class MemoryStorage implements StorageLike {
   readonly reads: string[] = [];
   readonly writes: string[] = [];
   private readonly values = new Map<string, string>();
+
+  seed(key: string, value: string) {
+    this.values.set(key, value);
+  }
 
   getItem(key: string) {
     this.reads.push(key);
@@ -73,7 +78,7 @@ describe("attempt evidence archive", () => {
     const archive = new AttemptArchive(storage);
     const saved = archive.save(createAttempt());
     expect(saved.persistenceStatus).toBe("MEMORY_ONLY");
-    expect(saved.attempt.persistenceStatus).toBe("MEMORY_ONLY");
+    expect(saved.attempt?.persistenceStatus).toBe("MEMORY_ONLY");
     expect(archive.list()).toHaveLength(1);
     expect(() => exportAttemptJson(saved.attempt)).not.toThrow();
   });
@@ -97,6 +102,7 @@ describe("attempt evidence archive", () => {
     const invalid = { ...createAttempt(), attemptId: "" };
     const saved = archive.save(invalid);
     expect(saved.persistenceStatus).toBe("FAILED");
+    expect(saved.attempt).toBeNull();
     expect(archive.list()).toHaveLength(0);
   });
 
@@ -106,7 +112,56 @@ describe("attempt evidence archive", () => {
     cyclic.cycle = cyclic;
     const saved = archive.save(cyclic);
     expect(saved.persistenceStatus).toBe("FAILED");
-    expect(saved.attempt.trace.persistenceStatus).toBe("FAILED");
+    expect(saved.attempt).toBeNull();
     expect(archive.list()).toHaveLength(0);
+  });
+
+  it("rejects parseable JSON with a malformed nested judgement without exposing or overwriting it", () => {
+    const storage = new MemoryStorage();
+    storage.seed(
+      ATTEMPT_ARCHIVE_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        attempts: [{ ...createAttempt(), firstJudgement: true }],
+      }),
+    );
+
+    const archive = new AttemptArchive(storage);
+    expect(archive.list()).toEqual([]);
+
+    const saved = archive.save(createAttempt());
+    expect(saved.persistenceStatus).toBe("MEMORY_ONLY");
+    expect(storage.writes).toEqual([]);
+  });
+
+  it.each([
+    ["non-object judgement", (attempt: AttemptRecord) => ({ ...attempt, firstJudgement: true })],
+    [
+      "invalid decision enum",
+      (attempt: AttemptRecord) => ({
+        ...attempt,
+        firstJudgement: { ...attempt.firstJudgement, decision: "MAYBE" },
+      }),
+    ],
+    [
+      "missing nested arrays",
+      (attempt: AttemptRecord) => ({
+        ...attempt,
+        firstJudgement: { ...attempt.firstJudgement, missingElementIds: undefined },
+      }),
+    ],
+    ["malformed trace", (attempt: AttemptRecord) => ({ ...attempt, trace: true })],
+    [
+      "inconsistent attempt status",
+      (attempt: AttemptRecord) => ({ ...attempt, status: "AWAITING_REWRITE" }),
+    ],
+    [
+      "invalid persistence enum",
+      (attempt: AttemptRecord) => ({ ...attempt, persistenceStatus: "SAVED" }),
+    ],
+    ["invalid version", (attempt: AttemptRecord) => ({ ...attempt, rubricVersion: "" })],
+    ["invalid timestamp", (attempt: AttemptRecord) => ({ ...attempt, updatedAt: "not-a-date" })],
+  ])("rejects %s", (_label, corrupt) => {
+    expect(isAttemptRecord(corrupt(createAttempt()))).toBe(false);
   });
 });

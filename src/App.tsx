@@ -10,6 +10,7 @@ import {
   revealReference,
   submitFirstAnswer,
   submitRewrite,
+  withPersistenceStatus,
   type WorkflowDependencies,
   type WorkflowState,
 } from "./domain/workflow";
@@ -190,6 +191,10 @@ export default function App() {
       return;
     }
     const saved = archive.save(nextWorkflow.attempt);
+    if (!saved.attempt) {
+      setWorkflow(withPersistenceStatus(nextWorkflow, "FAILED"));
+      return;
+    }
     setWorkflow({ ...nextWorkflow, attempt: saved.attempt });
     setAttempts(archive.list());
   }

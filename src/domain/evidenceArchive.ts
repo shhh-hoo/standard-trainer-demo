@@ -1,4 +1,9 @@
 import type { AttemptRecord, PersistenceStatus } from "./types";
+import {
+  isArchivePayload,
+  isAttemptRecord,
+  type ArchivePayload,
+} from "./archiveValidation";
 
 export const ATTEMPT_ARCHIVE_STORAGE_KEY = "standard-trainer-demo:attempts:v1";
 const ARCHIVE_VERSION = 1;
@@ -8,32 +13,9 @@ export interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-interface ArchivePayload {
-  readonly version: 1;
-  readonly attempts: readonly AttemptRecord[];
-}
-
 export interface SaveAttemptResult {
-  readonly attempt: AttemptRecord;
+  readonly attempt: AttemptRecord | null;
   readonly persistenceStatus: PersistenceStatus;
-}
-
-function isAttemptRecord(value: unknown): value is AttemptRecord {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<AttemptRecord>;
-  return Boolean(
-    candidate.attemptId &&
-      candidate.legacyItemId &&
-      candidate.standardNodeId &&
-      candidate.firstResponse &&
-      candidate.firstJudgement &&
-      candidate.trace &&
-      candidate.createdAt &&
-      candidate.updatedAt,
-  );
 }
 
 function replaceAttempt(
@@ -73,12 +55,8 @@ export class AttemptArchive {
         return;
       }
 
-      const parsed = JSON.parse(raw) as Partial<ArchivePayload>;
-      if (
-        parsed.version !== ARCHIVE_VERSION ||
-        !Array.isArray(parsed.attempts) ||
-        !parsed.attempts.every(isAttemptRecord)
-      ) {
+      const parsed: unknown = JSON.parse(raw);
+      if (!isArchivePayload(parsed) || parsed.version !== ARCHIVE_VERSION) {
         this.storageUsable = false;
         return;
       }
@@ -93,11 +71,10 @@ export class AttemptArchive {
     return this.attempts.slice();
   }
 
-  save(attempt: AttemptRecord): SaveAttemptResult {
+  save(attempt: unknown): SaveAttemptResult {
     if (!isAttemptRecord(attempt)) {
-      const invalidAttempt = attempt as unknown as Record<string, unknown>;
       return {
-        attempt: { ...invalidAttempt, persistenceStatus: "FAILED" } as unknown as AttemptRecord,
+        attempt: null,
         persistenceStatus: "FAILED",
       };
     }
@@ -106,7 +83,7 @@ export class AttemptArchive {
       JSON.stringify(attempt);
     } catch {
       return {
-        attempt: applyPersistenceStatus(attempt, "FAILED"),
+        attempt: null,
         persistenceStatus: "FAILED",
       };
     }
@@ -135,7 +112,7 @@ export class AttemptArchive {
   }
 }
 
-export function exportAttemptJson(attempt: AttemptRecord): string {
+export function exportAttemptJson(attempt: unknown): string {
   if (!isAttemptRecord(attempt)) {
     throw new Error("Cannot export an invalid attempt record.");
   }

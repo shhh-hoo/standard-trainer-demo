@@ -20,23 +20,46 @@ function normalizeInteger(value: unknown, fallback = 0): number {
 }
 
 /** Frozen port of student-site/learning-state-id.mjs buildStableContentId. */
-export function buildLegacyCanonicalContentId(context: LegacyRuntimeContext): string {
+export function buildLegacyCanonicalContentId(context: LegacyRuntimeContext = {}): string {
+  const {
+    stage,
+    levelId,
+    level,
+    topicSlug,
+    topic,
+    fileId,
+    packId,
+    sourceId,
+    canonicalSourceId,
+    id,
+    kind,
+    type,
+    round,
+    blankIndex = 0,
+    duplicateKey = "",
+  } = context;
+
   const parts = [
     "mb",
     "canonical",
     CONTENT_ID_VERSION,
-    normalizeContentIdPart(context.stage),
-    normalizeContentIdPart(context.levelId),
-    normalizeContentIdPart(context.topicSlug),
-    normalizeContentIdPart(context.fileId),
-    normalizeContentIdPart(context.sourceId),
-    normalizeContentIdPart(context.kind || context.type),
+    normalizeContentIdPart(stage),
+    normalizeContentIdPart(levelId ?? level),
+    normalizeContentIdPart(topicSlug ?? topic),
+    normalizeContentIdPart(packId ?? fileId),
+    normalizeContentIdPart(canonicalSourceId ?? sourceId ?? id),
+    normalizeContentIdPart(kind ?? type),
   ];
 
-  if (context.round !== undefined && context.round !== null) {
-    parts.push(`round-${normalizeContentIdPart(context.round)}`);
+  if (round !== undefined && round !== null && round !== "") {
+    parts.push(`round-${normalizeContentIdPart(round)}`);
   }
 
-  parts.push(`blank-${normalizeInteger(context.blankIndex)}`);
+  parts.push(`blank-${normalizeInteger(blankIndex)}`);
+
+  if (duplicateKey) {
+    parts.push(`dup-${normalizeContentIdPart(duplicateKey)}`);
+  }
+
   return parts.join(":");
 }

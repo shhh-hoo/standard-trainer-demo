@@ -27,16 +27,32 @@ export interface FixtureProvenance {
   readonly transformationNote: string;
 }
 
+export interface AlgorithmProvenance {
+  readonly id: string;
+  readonly repository: string;
+  readonly commitSha: string;
+  readonly filePath: string;
+  readonly gitBlobSha: string;
+  readonly snapshotGeneratedAt: string;
+  readonly transformationNote: string;
+}
+
 export interface LegacyRuntimeContext {
-  readonly stage: string;
-  readonly levelId: string;
-  readonly topicSlug: string;
-  readonly fileId: string;
-  readonly sourceId: string;
-  readonly kind: string;
-  readonly type: string;
-  readonly round?: number;
-  readonly blankIndex: number;
+  readonly stage?: unknown;
+  readonly levelId?: unknown;
+  readonly level?: unknown;
+  readonly topicSlug?: unknown;
+  readonly topic?: unknown;
+  readonly fileId?: unknown;
+  readonly packId?: unknown;
+  readonly sourceId?: unknown;
+  readonly canonicalSourceId?: unknown;
+  readonly id?: unknown;
+  readonly kind?: unknown;
+  readonly type?: unknown;
+  readonly round?: unknown;
+  readonly blankIndex?: unknown;
+  readonly duplicateKey?: unknown;
 }
 
 export interface LegacyMemorisationItem {
