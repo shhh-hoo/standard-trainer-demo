@@ -13,11 +13,16 @@ export interface ToolFailure {
   readonly toolVersion: string;
 }
 
+const UNICODE_SUBSCRIPT_DIGITS = "₀₁₂₃₄₅₆₇₈₉";
+
 function normalizeExpression(value: string): string {
   return value
     .trim()
     .toLowerCase()
     .replaceAll("²", "^2")
+    .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (digit) =>
+      String(UNICODE_SUBSCRIPT_DIGITS.indexOf(digit)),
+    )
     .replace(/\s+/g, "");
 }
 

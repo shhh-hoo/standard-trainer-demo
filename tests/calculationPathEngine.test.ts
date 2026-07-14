@@ -45,6 +45,23 @@ describe("calculation-path engine", () => {
     ]);
   });
 
+  it("accepts Unicode chemical subscripts in the curated Kp expression", () => {
+    const trace = evaluateCalculationPath(kpFromEquilibriumMoles, {
+      attemptId: "attempt-unicode-expression",
+      submittedAt: "2026-07-14T04:05:00.000Z",
+      steps: {
+        ...canonicalSteps(),
+        kpExpression: { expression: "p(NO₂)^2/p(N₂O₄)" },
+      },
+    });
+
+    expect(trace).toMatchObject({
+      decision: "VALID_PATH",
+      failureCode: null,
+      firstInvalidStepId: null,
+    });
+  });
+
   it("identifies the first numeric error and does not evaluate later steps", () => {
     const trace = evaluateCalculationPath(kpFromEquilibriumMoles, {
       attemptId: "attempt-first-invalid",
