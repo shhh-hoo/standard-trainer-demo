@@ -6,7 +6,7 @@ Calculation Path Trainer is a deterministic chemistry calculation-path diagnosis
 
 The current release contains exactly one curated problem: `KP_FROM_EQUILIBRIUM_MOLES`. It is a bounded engine proof, not a complete learning platform.
 
-V0.1 is now the frozen deterministic baseline. The proposed `2.0.0-draft.2` modality-neutral learner and measurement contract is documented in [V2 Measurement Contract](docs/V2_MEASUREMENT_CONTRACT.md); it defines recomputable calculation evidence, recognition gating, guided revisions, and gold artifacts but does not add V2 UI, parsing, OCR, or model calls.
+V0.1 is the frozen live learner baseline. The `2.0.0-draft.2` modality-neutral measurement contract is documented in [V2 Measurement Contract](docs/V2_MEASUREMENT_CONTRACT.md), and its deterministic runtime is implemented in the [V2 Domain Core](docs/V2_DOMAIN_CORE.md). The core validates normalized evidence, gates uncertain recognition, evaluates structured ASTs, aligns authored strategies, diagnoses the first pedagogical error, and emits a validated V2 trace. It does not add V2 UI, OCR, real text parsing, server endpoints, or model calls.
 
 ## Live Demo
 
@@ -24,6 +24,8 @@ V0.1 is now the frozen deterministic baseline. The proposed `2.0.0-draft.2` moda
 - JSON evidence export.
 - A responsive, keyboard-accessible React workbench.
 - CI-backed type checking, tests, and production builds.
+- A separate V2 deterministic domain API with fail-closed input/trace validation.
+- Exact engine diagnosis for 16 authored V2 gold fixtures and four explicit typed mock scenarios.
 
 ## Explicit limitations
 
@@ -61,7 +63,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 30 tests: 15 for the frozen V0.1 runtime and 15 contract-integrity checks for the proposed V2 gold artifacts. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2).
+The current suite contains 80 tests: 15 for the frozen V0.1 runtime, 15 contract-integrity checks for the V2 gold artifacts, and 50 runtime/core/adapter/adversarial checks for the deterministic V2 implementation. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2), and the V2 contract baseline was merged in [PR #5](https://github.com/shhh-hoo/standard-trainer-demo/pull/5).
 
 ## Demo walkthrough
 
