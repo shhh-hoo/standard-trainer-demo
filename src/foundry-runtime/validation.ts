@@ -1,3 +1,5 @@
+import Ajv2020, { type ErrorObject } from "ajv/dist/2020";
+import canonicalComponentSchema from "../published-components/diagnostic-learning-component.schema.json";
 import { STANDARD_TRAINER_CAPABILITY } from "./capability";
 import { computeContentHash } from "./contentHash";
 import type { ExpressionAst, PublishedDiagnosticLearningComponent, ValidationResult } from "./types";
@@ -5,6 +7,13 @@ import type { ExpressionAst, PublishedDiagnosticLearningComponent, ValidationRes
 type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord => typeof value === "object" && value !== null && !Array.isArray(value);
 const issue = (path: string, code: string, message: string) => ({ path, code, message });
+const ajv = new Ajv2020({ allErrors: true, strict: false, validateFormats: false });
+const validateCanonicalComponent = ajv.compile(canonicalComponentSchema);
+
+function schemaIssue(error: ErrorObject) {
+  const suffix = error.params && "missingProperty" in error.params ? `/${String(error.params.missingProperty)}` : "";
+  return issue(`${error.instancePath || "$"}${suffix}`, `SCHEMA_${error.keyword.toUpperCase()}`, error.message ?? `Failed ${error.keyword} validation.`);
+}
 
 function expressionKinds(expression: ExpressionAst): readonly string[] {
   if (expression.kind === "BINARY") return ["BINARY", ...expressionKinds(expression.left), ...expressionKinds(expression.right)];
@@ -25,14 +34,11 @@ export function unwrapPublishedSnapshot(value: unknown): unknown {
 
 export function validatePublishedComponent(value: unknown): { readonly ok: true; readonly value: PublishedDiagnosticLearningComponent } | { readonly ok: false; readonly issues: readonly ReturnType<typeof issue>[] } {
   const raw = unwrapPublishedSnapshot(value);
-  if (!isRecord(raw)) return { ok: false, issues: [issue("$", "EXPECTED_OBJECT", "Published component must be an object.")] };
-  const requiredObjects = ["curriculum", "presentation", "target", "reasoningGraph", "diagnosisPolicy", "hintPolicy", "provenance", "review", "publication"];
-  const missing = requiredObjects.filter((key) => !isRecord(raw[key]));
-  const requiredArrays = ["authoredFacts", "formulaDefinitions", "markScheme"];
-  const missingArrays = requiredArrays.filter((key) => !Array.isArray(raw[key]));
-  if (typeof raw.id !== "string" || typeof raw.version !== "string" || raw.status !== "PUBLISHED" || missing.length || missingArrays.length) {
-    return { ok: false, issues: [issue("$", "INVALID_PUBLISHED_SCHEMA", `Missing or invalid required fields: ${[...missing, ...missingArrays].join(", ") || "id, version or status"}.`)] };
-  }
+  if (!validateCanonicalComponent(raw)) return { ok: false, issues: (validateCanonicalComponent.errors ?? []).map(schemaIssue) };
+  if (!isRecord(raw) || raw.status !== "PUBLISHED") return { ok: false, issues: [issue("$.status", "NOT_PUBLISHED", "Runtime only accepts PUBLISHED components.")] };
+  if (!isRecord(raw.review)) return { ok: false, issues: [issue("$.review", "MISSING_REVIEW", "Published components require review metadata.")] };
+  if (!isRecord(raw.publication)) return { ok: false, issues: [issue("$.publication", "MISSING_PUBLICATION", "Published components require publication metadata.")] };
+  if (isRecord(raw.provenance) && raw.provenance.origin === "MIGRATED" && !isRecord(raw.migration)) return { ok: false, issues: [issue("$.migration", "MISSING_MIGRATION_METADATA", "Migrated components must declare migration fidelity and omitted capabilities.")] };
   const component = raw as unknown as PublishedDiagnosticLearningComponent;
   const issues: ReturnType<typeof issue>[] = [];
   if (!STANDARD_TRAINER_CAPABILITY.supportedSchemaVersions.includes(component.schemaVersion)) issues.push(issue("$.schemaVersion", "UNSUPPORTED_SCHEMA_VERSION", `Schema ${component.schemaVersion} is unsupported.`));

@@ -2,7 +2,7 @@
 
 ## 1. Context
 
-Standard Trainer is a runnable product proof for Cambridge A-Level Chemistry-style structured calculations. It is now the first downstream consumer of Learning Foundry: the runtime loads two governed published components while retaining the original V0.1 and V2 Kp assets as regression evidence.
+Standard Trainer is a runnable product proof for Cambridge A-Level Chemistry-style structured calculations. It is now the first downstream consumer of Learning Foundry: the runtime loads two governed published components while retaining the original V0.1 and legacy V2 Kp assets as regression evidence. The published Kp component is explicitly a simplified migration with bounded happy-path compatibility.
 
 This is not a complete learning platform. It is evidence that the central calculation-path mechanism can be represented, evaluated, tested, and explained before broader product capabilities are funded.
 
@@ -64,7 +64,7 @@ Browser-only persistence keeps deployment small and transparent. The cost is tha
 
 The project does not perform arbitrary chemistry reasoning, natural-language parsing, arbitrary expression parsing, question generation, learner modelling, bounded or general ECF, or agentic workflow orchestration. It has no production authentication, remote database, analytics, or security control plane. Two governed components do not establish broad exam-board coverage.
 
-The V2 typed-working adapter is explicitly a mock scenario selector, not NLP. Its Kp semantics remain finite and authored rather than topology-generic or general algebra. Published component identity is now enforced through the Foundry manifest, content hash, capability profile, internal-reference validation, and target adapter registry. The repository still contains no OCR, real parser, server endpoint, or model call.
+The V2 typed-working adapter is explicitly a mock scenario selector, not NLP. Its Kp semantics remain finite and authored rather than topology-generic or general algebra. The separate Foundry Kp adapter does not claim full V2 semantic preservation: it proves bounded structured happy-path decision parity and declares the omitted capabilities in migration metadata. Published component identity is enforced through canonical schema validation, exact manifest/file mapping, content hash, capability profile, internal-reference validation, and the target adapter registry. The repository still contains no OCR, real parser, server endpoint, or model call.
 
 Accordingly, the evidence supports only this claim: for the frozen V0.1 path and the authored V2 gold evidence corpus, the deterministic engines identify the first relevant invalid stage and emit validated, versioned traces.
 

@@ -22,7 +22,11 @@ export interface PublishedDiagnosticLearningComponent {
   readonly diagnosisPolicy: { readonly version: string; readonly categoryOrder: readonly DiagnosisCategory[]; readonly supportedFailureCodes: readonly DiagnosisFailureCode[] };
   readonly hintPolicy: { readonly version: string; readonly automaticEscalationAfterConsecutiveFailures: number; readonly hints: readonly { readonly id: string; readonly stage: DiagnosisCategory; readonly level: 1 | 2 | 3 | 4; readonly text: string; readonly revealedReasoningNodeIds: readonly string[] }[] };
   readonly markScheme: readonly { readonly id: string; readonly reasoningNodeId: string; readonly description: string; readonly marks: number }[];
-  readonly provenance: { readonly origin: "MIGRATED" | "AI_GENERATED" | "EXPERT_AUTHORED"; readonly generatorId?: string; readonly sourceComponentId?: string };
+  readonly provenance:
+    | { readonly origin: "MIGRATED"; readonly sourceComponentId: string }
+    | { readonly origin: "AI_GENERATED"; readonly generatorId: string; readonly promptVersion: string; readonly generatedAt: string }
+    | { readonly origin: "EXPERT_AUTHORED" };
+  readonly migration?: { readonly fidelity: "LOSSLESS" | "SIMPLIFIED"; readonly sourceContractVersion?: string; readonly omittedCapabilities: readonly string[] };
   readonly review: { readonly reviewer: string; readonly reviewedAt: string; readonly notes: string };
   readonly publication: { readonly publishedAt: string; readonly publishedBy: string; readonly contentHash: string };
 }

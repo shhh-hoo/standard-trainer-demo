@@ -8,7 +8,7 @@ Learning Foundry is the upstream authority for governed learning components. Thi
 
 The default UI loads an immutable Foundry registry and lets the learner select:
 
-- **Kp from equilibrium amounts** — migrated from `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD`;
+- **Kp from equilibrium amounts** — a simplified Foundry migration from `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD`, providing bounded happy-path compatibility with explicit omitted V2 capabilities;
 - **Stoichiometric product mass** — an expert-authored `2Mg + O₂ → 2MgO` mass calculation.
 
 The runtime supports `KP` and `MASS` target adapters, structured learner evidence, authored fact checks, reasoning-link requirements, target checks, deterministic arithmetic, units, significant figures, and versioned evidence traces. Unsupported target kinds, unmanifested snapshots, unresolved references, and content-hash mismatches fail closed.
@@ -17,7 +17,7 @@ The separately tested V2 component inspector from the previous release remains a
 
 ## Reliable core retained
 
-The frozen V0.1 calculation-path assets and tests remain in the repository. The V2 deterministic domain core continues to run its migrated Kp regression fixtures. Its former exact serialized-gold gate has been replaced by structural, cross-reference, expression, and policy validation; immutable Foundry snapshots now provide publication identity at the new runtime boundary.
+The frozen V0.1 calculation-path assets and tests remain in the repository. The legacy V2 deterministic domain core continues to run its full Kp gold and adversarial fixtures. The separate Foundry-published Kp adapter proves bounded structured happy-path decision parity only; its migration metadata explicitly records omitted V2 capabilities. Immutable Foundry snapshots provide publication identity at that new runtime boundary.
 
 ## Architecture
 
@@ -48,4 +48,3 @@ npm run build
 This is a bounded static runtime, not a general Chemistry solver or LMS. It does not accept arbitrary generated components, arbitrary questions, free-form reasoning, handwriting, OCR, general symbolic algebra, or general ECF judgement. It has no server, authentication, database, or tamper-proof evidence store. The demo content hash detects snapshot mutation within this boundary; it is not a cryptographic identity or signature.
 
 See [Architecture](docs/ARCHITECTURE.md), [Demo](docs/DEMO.md), [V2 Domain Core](docs/V2_DOMAIN_CORE.md), [V2 Component Boundary](docs/COMPONENT_BOUNDARY.md), and [Foundry Integration](docs/FOUNDRY_INTEGRATION.md).
-

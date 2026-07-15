@@ -75,6 +75,6 @@ All temporal semantics use revision sequence and revision `stepIds`; the physica
 
 ## Trust boundary and exclusions
 
-The gold suite plus adversarial tests preserve the migrated Kp regression; they do not establish broad curriculum coverage, transfer, or mastery. The learner UI now also exposes the two immutable Foundry-published components through bounded target adapters.
+The gold suite plus adversarial tests preserve the legacy V2 Kp regression; they do not establish broad curriculum coverage, transfer, or mastery. The learner UI separately exposes two immutable Foundry-published components through bounded target adapters; the simplified published Kp component proves happy-path parity only.
 
 This core adds no learner UI, OCR, image/digital-ink ingestion UI, camera access, real text parser, LLM/model/provider integration, server endpoint, secrets, hint-delivery UI, retry orchestration, transfer item, question generation, persistence migration, authentication, analytics, general dimensional algebra, general symbolic algebra, or general ECF claim.

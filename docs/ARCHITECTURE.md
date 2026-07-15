@@ -20,19 +20,21 @@ flowchart TD
 
 ## Fail-closed sequence
 
-1. Validate published shape and `PUBLISHED` status.
-2. Recompute the stable content hash and compare it with snapshot and manifest.
-3. Confirm schema version, target kind, expression nodes, diagnosis categories, and failure codes are supported.
-4. Validate graph, formula, fact, strategy, and hint references.
-5. Resolve the component by ID and optional version.
-6. Select a registered target adapter.
-7. Validate the attempt is pinned to that component version.
-8. Run shared checks in pedagogical order and emit the first error.
+1. Validate the complete nested snapshot against Foundry's canonical JSON Schema, then require `PUBLISHED`, review, and publication metadata.
+2. Enforce unique manifest identities/files and an exact manifest-entry-to-snapshot-file bijection.
+3. Recompute the stable content hash and compare it with snapshot and manifest.
+4. Confirm schema version, target kind, expression nodes, diagnosis categories, and failure codes are supported.
+5. Validate graph, formula, fact, strategy, and hint references.
+6. Resolve the component by ID and optional version.
+7. Select a registered target adapter.
+8. Validate the attempt is pinned to that component version.
+9. Run shared checks in pedagogical order and emit the first error.
 
 ## Preserved layers
 
 - `src/domain` and `src/fixtures` retain V0.1 and V2 assets.
 - The legacy V2 path uses a bounded structural support check rather than exact fixture serialization; its Kp semantics and 16-fixture regression remain unchanged.
+- The Foundry-published Kp path is separate: it is a simplified migration with happy-path decision parity, not a lossless binding of those V2 semantics.
 - `src/component` retains the prior public manifest, preflight, invocation, and result envelopes.
 - `src/ComponentInspector.tsx` remains a developer tool at `?view=inspector`.
 - `src/foundry-runtime` is the new published-component consumer boundary.
@@ -41,4 +43,3 @@ flowchart TD
 ## Trust boundary
 
 All code runs in the browser. Registry validation detects malformed or mutated bundled artifacts, not supply-chain compromise or cryptographic identity. IDs, timestamps, and exported traces remain client-controlled. Production evidence would require authenticated server-side signing and storage outside this demo.
-
