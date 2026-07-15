@@ -1,5 +1,8 @@
 import { collectVariableReferences } from "./expressionEvaluator";
 import { aggregateRecognitionGate } from "./recognitionGate";
+import { analyzeAuthoredEquationSemantics } from "./authoredEquationSemantics";
+import { orderedSteps, resolveDecisionRevision } from "./attemptOrder";
+import { analyzeCompressedCalculation } from "./reasoningAlignment";
 import {
   V2_CONTRACT_VERSION,
   type DiagnosticEvidenceTraceV2,
@@ -18,6 +21,12 @@ export interface ValidationIssue {
 export type ValidationResult<T> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
+
+export interface TraceValidationContext {
+  readonly attempt: NormalizedAttempt;
+  readonly selectedStrategyId: string | null;
+  readonly decisionRevisionId: string | null;
+}
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -926,9 +935,159 @@ const failureCategory: Readonly<Record<string, (typeof categories)[number]>> = {
   SIGNIFICANT_FIGURES_ERROR: "PRECISION",
 };
 
+function traceDecisionRevision(
+  trace: DiagnosticEvidenceTraceV2,
+): DiagnosticEvidenceTraceV2["revisions"][number] | null {
+  if (trace.recognitionGateDecision !== "PASSED") return null;
+  const revisions = [...trace.revisions].sort((left, right) => left.sequence - right.sequence);
+  if (trace.decision !== "SOLVED") return revisions.at(-1) ?? null;
+  const arithmeticStepIds = new Set(
+    trace.stageEvaluations.find(({ category }) => category === "ARITHMETIC")
+      ?.evidenceStepIds ?? [],
+  );
+  return (
+    [...revisions]
+      .reverse()
+      .find((revision) => revision.stepIds.some((stepId) => arithmeticStepIds.has(stepId))) ??
+    null
+  );
+}
+
+function validateTraceDecisionConsistency(
+  trace: DiagnosticEvidenceTraceV2,
+  problem: DiagnosticProblemDefinitionV2,
+  issues: ValidationIssue[],
+  context?: TraceValidationContext,
+): void {
+  const decisionRevision = context
+    ? trace.revisions.find(({ id }) => id === context.decisionRevisionId) ?? null
+    : traceDecisionRevision(trace);
+  const directEvents = decisionRevision
+    ? trace.assistanceEvents.filter((event) =>
+        decisionRevision.precededByAssistanceEventIds.includes(event.id),
+      )
+    : [];
+  if (
+    trace.attemptSupportOutcome === "SOLVED_INDEPENDENTLY" &&
+    directEvents.length > 0
+  ) {
+    issue(
+      issues,
+      "$.attemptSupportOutcome",
+      "INDEPENDENT_OUTCOME_WITH_LINKED_ASSISTANCE",
+      "An independent outcome cannot directly link assistance in the decision revision.",
+    );
+  }
+  const requiredSupportLevel: Partial<Record<DiagnosticEvidenceTraceV2["attemptSupportOutcome"], number>> = {
+    SOLVED_AFTER_METACOGNITIVE_PROMPT: 1,
+    SOLVED_AFTER_STRATEGY_HINT: 2,
+    SOLVED_AFTER_FORMULA_HINT: 3,
+    SOLVED_USING_FULL_SCAFFOLD: 4,
+    NOT_SOLVED_AFTER_FULL_SCAFFOLD: 4,
+  };
+  const requiredLevel = requiredSupportLevel[trace.attemptSupportOutcome];
+  if (
+    requiredLevel !== undefined &&
+    Math.max(0, ...directEvents.map(({ level }) => level)) !== requiredLevel
+  ) {
+    issue(
+      issues,
+      "$.attemptSupportOutcome",
+      "SUPPORT_OUTCOME_WITHOUT_DIRECT_EVENT",
+      "The support outcome requires a matching directly linked assistance level.",
+    );
+  }
+  for (const stage of trace.stageEvaluations) {
+    if (stage.status !== "SUPPORTED_BY_HINT") continue;
+    const relevantEvent = directEvents.some(
+      (event) =>
+        event.stage === stage.category ||
+        event.revealedReasoningNodeIds.some(
+          (nodeId) => problem.reasoningGraph.nodes[nodeId]?.category === stage.category,
+        ),
+    );
+    const evidenceInDecisionRevision = Boolean(
+      decisionRevision &&
+        stage.evidenceStepIds.some((stepId) => decisionRevision.stepIds.includes(stepId)),
+    );
+    if (!relevantEvent || !evidenceInDecisionRevision) {
+      issue(
+        issues,
+        "$.stageEvaluations",
+        "SUPPORTED_STAGE_WITHOUT_DIRECT_EVENT",
+        "A supported stage must trace to relevant assistance and evidence in the decision revision.",
+      );
+    }
+  }
+  if (trace.decision === "SOLVED") {
+    for (const category of ["FORMULA", "SUBSTITUTION"] as const) {
+      const status = trace.stageEvaluations.find((stage) => stage.category === category)?.status;
+      if (status !== "CORRECT" && status !== "SUPPORTED_BY_HINT") {
+        issue(
+          issues,
+          "$.decision",
+          "SOLVED_WITHOUT_REQUIRED_STAGE",
+          `A solved trace requires ${category} to be satisfied.`,
+        );
+      }
+    }
+    if (
+      context &&
+      (!context.selectedStrategyId ||
+        !problem.reasoningGraph.acceptedStrategies.some(
+          ({ id }) => id === context.selectedStrategyId,
+        ))
+    ) {
+      issue(
+        issues,
+        "$.decision",
+        "SOLVED_WITHOUT_ACCEPTED_STRATEGY",
+        "A solved trace requires a selected accepted strategy.",
+      );
+    }
+  }
+  if (context) {
+    const expectedDecisionRevision =
+      trace.recognitionGateDecision === "PASSED"
+        ? resolveDecisionRevision(context.attempt, trace.decision === "SOLVED")
+        : null;
+    if ((expectedDecisionRevision?.id ?? null) !== context.decisionRevisionId) {
+      issue(
+        issues,
+        "$.revisions",
+        "INVALID_DECISION_REVISION_CONTEXT",
+        "Trace validation context must identify the contract decision revision.",
+      );
+    }
+    const equationSemantics = analyzeAuthoredEquationSemantics(problem, context.attempt);
+    const semanticFailures = orderedSteps(context.attempt).filter((step) => {
+      const semantic = equationSemantics.get(step.id);
+      return Boolean(
+        semantic?.authoritative &&
+          !semantic.valid &&
+          (!step.calculation ||
+            !analyzeCompressedCalculation(problem, step.calculation.expression)
+              .dependenciesComplete),
+      );
+    });
+    if (
+      semanticFailures.length > 0 &&
+      (trace.decision === "SOLVED" || context.selectedStrategyId !== null)
+    ) {
+      issue(
+        issues,
+        "$.alignmentEvidence",
+        "SEMANTIC_EQUATION_FAILURE_WITH_STRATEGY_MATCH",
+        "An authored equation semantic failure cannot coexist with a strategy match or solved trace.",
+      );
+    }
+  }
+}
+
 export function validateDiagnosticEvidenceTraceV2(
   value: unknown,
   problem: DiagnosticProblemDefinitionV2,
+  context?: TraceValidationContext,
 ): ValidationResult<DiagnosticEvidenceTraceV2> {
   const issues: ValidationIssue[] = [];
   const trace = requireRecord(value, "$", issues);
@@ -1103,5 +1262,13 @@ export function validateDiagnosticEvidenceTraceV2(
     "$.*.sequence",
     issues,
   );
+  if (issues.length === 0) {
+    validateTraceDecisionConsistency(
+      value as DiagnosticEvidenceTraceV2,
+      problem,
+      issues,
+      context,
+    );
+  }
   return issues.length === 0 ? { ok: true, value: value as DiagnosticEvidenceTraceV2 } : { ok: false, issues };
 }

@@ -23,7 +23,7 @@ unknown input
 → validate the output trace
 ```
 
-Invalid user input returns structured validation issues. `validateDiagnosticProblemDefinitionV2` is a generic shape validator; shape-valid does not mean engine-supported. `validateSupportedDiagnosticProblem` restricts diagnosis to `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.2` before any Kp-specific logic. Only an unexpected internal invariant is reported as `INTERNAL_INVARIANT_FAILURE`.
+Invalid user input returns structured validation issues. `validateDiagnosticProblemDefinitionV2` is a generic shape validator; shape-valid does not mean engine-supported. `validateSupportedDiagnosticProblem` compares a key-order-independent canonical serialization of the complete definition with `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.2`, so unchanged version labels cannot authorize mutated facts, targets, formulae, strategies, policies, or hints. Only an unexpected internal invariant is reported as `INTERNAL_INVARIANT_FAILURE`.
 
 ## Runtime validation boundary
 
@@ -53,15 +53,17 @@ Reasoning alignment consumes normalized facts, targets, semantic types, equation
 
 The compressed analyser returns dependency completeness and formula comparison separately. It identifies both authored mole facts, total-moles subexpressions, mole fractions, total pressure, and each species-specific partial pressure before comparing the outer numerator, denominator, and exponent with `formula-kp-no2-n2o4`. A correct embedded calculation can prove FORMULA without a separate `formulaAst`; squaring N₂O₄ cannot. Direct equilibrium-mole substitution does not match the compressed strategy.
 
+Explicit equations have a separate bounded semantic authority for total moles, both mole fractions, both partial pressures, and the final Kp calculation. Prior-step references resolve through their authored reasoning-node targets; display symbols and text are ignored. ADD and MULTIPLY operands may commute, but numerator, denominator, exponent, species, and upstream dependency identities may not. Only semantically valid equations enter strategy alignment. Arithmetic recomputation runs afterward, so a wrong expression evaluated consistently is a substitution/dependency error rather than an arithmetic error.
+
 ## Deterministic diagnosis and traces
 
 Versioned checks keep fact use, target, strategy, formula, substitution, recomputation, arithmetic, unit, and significant figures as evidence records rather than a single boolean. Numeric tolerance is centralized for the current gold problem. Significant figures use `QuantityValue.raw` and the explicit significant-figure field, never a JavaScript number guess.
 
 `NOT_OBSERVED` is not an error. Downstream effects do not create new errors, while independently verifiable later stages can remain correct. The first `INCORRECT` stage controls the trace failure code and first pedagogical error. A solved result requires an accepted strategy plus formula/substitution satisfaction and independently correct arithmetic, unit, and precision; data extraction and target identification may remain `NOT_OBSERVED`.
 
-Deterministic checks are produced from base evaluations before assistance is overlaid. A tool can therefore remain `PASS` while the learner-facing stage is `SUPPORTED_BY_HINT`. Support applies only when a directly preceding event's stage or revealed reasoning nodes match evidence in that revision; unrelated historical hints do not overwrite later independent work.
+Deterministic checks are produced from base evaluations before assistance is overlaid. A tool can therefore remain `PASS` while the learner-facing stage is `SUPPORTED_BY_HINT`. One `resolveDecisionRevision` rule selects the adopted result revision for solved attempts and the latest revision for unsolved attempts. Both the learner-facing overlay and attempt support outcome use only that revision's directly linked events; unrelated historical hints cannot overwrite later independent work.
 
-All temporal semantics use revision sequence and revision `stepIds`; the physical `attempt.steps` array order is not authoritative. Solved support outcomes use the revision containing the latest result. An unsolved attempt uses the latest revision, so an incomplete revision directly following level-4 support becomes `NOT_SOLVED_AFTER_FULL_SCAFFOLD` even without a result step. The trace contains all immutable policy/problem versions, interpreter metadata, recognition evidence, alignment, deterministic checks, stages, revisions, assistance, support outcome, and caller-supplied submission time. Every engine trace is validated before return.
+All temporal semantics use revision sequence and revision `stepIds`; the physical `attempt.steps` array order is not authoritative. An incomplete latest revision directly following level-4 support becomes `NOT_SOLVED_AFTER_FULL_SCAFFOLD` even without a result step. Trace validation checks support/outcome causality, required solved stages, the internally selected accepted strategy, and the absence of authored equation semantic failures in a matched/solved trace. The trace schema is unchanged; engine-only facts are supplied as validation context. Every engine trace is validated before return.
 
 ## V1 structured adapter
 

@@ -167,4 +167,125 @@ describe("V2 trace consistency boundary", () => {
       "INVALID_FIRST_ERROR",
     );
   });
+
+  it("rejects support outcomes that disagree with the decision revision", () => {
+    const hinted = diagnoseNormalizedAttempt(
+      kpGoldProblemV2,
+      guidedSolvedAfterFormulaHint.attempt,
+      context,
+    );
+    if (!hinted.ok) throw new Error(JSON.stringify(hinted.issues));
+    const falseIndependent = structuredClone(hinted.trace);
+    Object.assign(falseIndependent, { attemptSupportOutcome: "SOLVED_INDEPENDENTLY" });
+    const falseIndependentResult = validateDiagnosticEvidenceTraceV2(
+      falseIndependent,
+      kpGoldProblemV2,
+    );
+    expect(falseIndependentResult.ok).toBe(false);
+    if (!falseIndependentResult.ok) {
+      expect(falseIndependentResult.issues.map(({ code }) => code)).toContain(
+        "INDEPENDENT_OUTCOME_WITH_LINKED_ASSISTANCE",
+      );
+    }
+
+    const independent = diagnoseNormalizedAttempt(
+      kpGoldProblemV2,
+      completeHandwritingCorrect.attempt,
+      context,
+    );
+    if (!independent.ok) throw new Error(JSON.stringify(independent.issues));
+    const missingFormulaHint = structuredClone(independent.trace);
+    Object.assign(missingFormulaHint, {
+      attemptSupportOutcome: "SOLVED_AFTER_FORMULA_HINT",
+    });
+    const missingFormulaHintResult = validateDiagnosticEvidenceTraceV2(
+      missingFormulaHint,
+      kpGoldProblemV2,
+    );
+    expect(missingFormulaHintResult.ok).toBe(false);
+    if (!missingFormulaHintResult.ok) {
+      expect(missingFormulaHintResult.issues.map(({ code }) => code)).toContain(
+        "SUPPORT_OUTCOME_WITHOUT_DIRECT_EVENT",
+      );
+    }
+  });
+
+  it("rejects unsupported-by-causality stages and unsatisfied solved traces", () => {
+    const result = diagnoseNormalizedAttempt(
+      kpGoldProblemV2,
+      completeHandwritingCorrect.attempt,
+      context,
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+
+    const unsupported = structuredClone(result.trace);
+    Object.assign(
+      unsupported.stageEvaluations.find(({ category }) => category === "FORMULA")!,
+      { status: "SUPPORTED_BY_HINT" },
+    );
+    const unsupportedResult = validateDiagnosticEvidenceTraceV2(unsupported, kpGoldProblemV2);
+    expect(unsupportedResult.ok).toBe(false);
+    if (!unsupportedResult.ok) {
+      expect(unsupportedResult.issues.map(({ code }) => code)).toContain(
+        "SUPPORTED_STAGE_WITHOUT_DIRECT_EVENT",
+      );
+    }
+
+    const unsatisfied = structuredClone(result.trace);
+    Object.assign(
+      unsatisfied.stageEvaluations.find(({ category }) => category === "FORMULA")!,
+      { status: "NOT_OBSERVED", evidenceStepIds: [] },
+    );
+    const unsatisfiedResult = validateDiagnosticEvidenceTraceV2(unsatisfied, kpGoldProblemV2);
+    expect(unsatisfiedResult.ok).toBe(false);
+    if (!unsatisfiedResult.ok) {
+      expect(unsatisfiedResult.issues.map(({ code }) => code)).toContain(
+        "SOLVED_WITHOUT_REQUIRED_STAGE",
+      );
+    }
+  });
+
+  it("uses internal context to require an accepted strategy and semantic equations", () => {
+    const result = diagnoseNormalizedAttempt(
+      kpGoldProblemV2,
+      completeHandwritingCorrect.attempt,
+      context,
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.issues));
+
+    const noStrategy = validateDiagnosticEvidenceTraceV2(result.trace, kpGoldProblemV2, {
+      attempt: completeHandwritingCorrect.attempt,
+      selectedStrategyId: null,
+      decisionRevisionId: "rev-1",
+    });
+    expect(noStrategy.ok).toBe(false);
+    if (!noStrategy.ok) {
+      expect(noStrategy.issues.map(({ code }) => code)).toContain(
+        "SOLVED_WITHOUT_ACCEPTED_STRATEGY",
+      );
+    }
+
+    const wrongEquation = cloneAttempt(completeHandwritingCorrect.attempt);
+    const total = wrongEquation.steps.find(({ id }) => id === "total")!;
+    const expression = total.calculation!.expression;
+    if (expression.kind !== "BINARY" || expression.operator !== "ADD") {
+      throw new Error("Expected total-moles addition");
+    }
+    Object.assign(expression, { right: structuredClone(expression.left) });
+    const semanticMismatch = validateDiagnosticEvidenceTraceV2(
+      result.trace,
+      kpGoldProblemV2,
+      {
+        attempt: wrongEquation,
+        selectedStrategyId: "EXPLICIT_PARTIAL_PRESSURES",
+        decisionRevisionId: "rev-1",
+      },
+    );
+    expect(semanticMismatch.ok).toBe(false);
+    if (!semanticMismatch.ok) {
+      expect(semanticMismatch.issues.map(({ code }) => code)).toContain(
+        "SEMANTIC_EQUATION_FAILURE_WITH_STRATEGY_MATCH",
+      );
+    }
+  });
 });

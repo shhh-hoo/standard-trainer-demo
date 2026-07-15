@@ -4,6 +4,7 @@ import {
   type FormulaComparison,
 } from "./expressionEvaluator";
 import { orderedSteps } from "./attemptOrder";
+import { analyzeAuthoredEquationSemantics } from "./authoredEquationSemantics";
 import type {
   DiagnosisCategory,
   DiagnosticProblemDefinitionV2,
@@ -235,7 +236,10 @@ export function isCompleteCompressedCalculation(
   return analysis.dependenciesComplete && analysis.formulaComparison === "EQUIVALENT";
 }
 
-function explicitNodeEvidence(step: NormalizedStep): readonly [string, ReasoningEvidenceKind][] {
+function explicitNodeEvidence(
+  step: NormalizedStep,
+  equationSemanticallyValid: boolean,
+): readonly [string, ReasoningEvidenceKind][] {
   const evidence: [string, ReasoningEvidenceKind][] = [];
   if (step.semanticType === "DATA_SELECTION") evidence.push(["select-relevant-data", "EXPLICIT_STEP"]);
   if (step.semanticType === "TARGET_IDENTIFICATION") evidence.push(["identify-kp-target", "TARGET_STATEMENT"]);
@@ -245,7 +249,7 @@ function explicitNodeEvidence(step: NormalizedStep): readonly [string, Reasoning
     evidence.push(["construct-kp-expression", "FORMULA_AST"]);
   }
   const target = step.calculation?.target;
-  if (target?.source === "REASONING_QUANTITY") {
+  if (target?.source === "REASONING_QUANTITY" && equationSemanticallyValid) {
     evidence.push([target.reasoningNodeId, "EQUATION"]);
     if (step.calculation?.declaredResult) evidence.push([target.reasoningNodeId, "DECLARED_RESULT"]);
     if (
@@ -278,6 +282,7 @@ export function alignReasoningEvidence(
 ): ReasoningAlignmentResult {
   const evidence: ReasoningAlignmentEvidence[] = [];
   const attemptSteps = orderedSteps(attempt);
+  const equationSemantics = analyzeAuthoredEquationSemantics(problem, attempt);
   const stepById = new Map(attemptSteps.map((step) => [step.id, step]));
   const add = (stepId: string, nodeId: string, evidenceKind: ReasoningEvidenceKind) => {
     if (!problem.reasoningGraph.nodes[nodeId]) return;
@@ -312,7 +317,9 @@ export function alignReasoningEvidence(
     });
   }
   for (const step of attemptSteps) {
-    explicitNodeEvidence(step).forEach(([nodeId, kind]) => add(step.id, nodeId, kind));
+    explicitNodeEvidence(step, equationSemantics.get(step.id)?.valid ?? false).forEach(
+      ([nodeId, kind]) => add(step.id, nodeId, kind),
+    );
     if (step.calculation) {
       const compressed = analyzeCompressedCalculation(problem, step.calculation.expression);
       for (const nodeId of compressed.evidenceNodeIds) {

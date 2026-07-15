@@ -8,7 +8,8 @@ import {
   independentEvidenceStepIds,
   isCompleteCompressedCalculation,
 } from "./reasoningAlignment";
-import { latestStepMatching, orderedRevisions, orderedSteps } from "./attemptOrder";
+import { latestStepMatching, orderedSteps } from "./attemptOrder";
+import { analyzeAuthoredEquationSemantics } from "./authoredEquationSemantics";
 import type { ReasoningAlignmentResult } from "./reasoningAlignment";
 import type {
   DeterministicCheckEvidence,
@@ -16,9 +17,9 @@ import type {
   DiagnosisFailureCode,
   DiagnosticProblemDefinitionV2,
   ExpectedStageEvaluation,
-  ExpressionAst,
   NormalizedAttempt,
   NormalizedStep,
+  AttemptRevision,
 } from "./types";
 
 export const V2_DETERMINISTIC_TOOL_VERSION = "v2-diagnostic-tools-2.0.0-draft.2";
@@ -69,34 +70,6 @@ function formulaFailure(comparison: FormulaComparison): DiagnosisFailureCode {
         : "WRONG_FORMULA";
 }
 
-function referencesPriorPartialPressures(
-  expression: ExpressionAst,
-  stepById: ReadonlyMap<string, NormalizedStep>,
-): boolean {
-  const refs: string[] = [];
-  const visit = (node: ExpressionAst) => {
-    if (node.kind === "VARIABLE" && node.reference.source === "NORMALIZED_STEP_RESULT") {
-      refs.push(node.reference.stepId);
-    } else if (node.kind === "BINARY") {
-      visit(node.left);
-      visit(node.right);
-    } else if (node.kind === "FUNCTION") {
-      node.arguments.forEach(visit);
-    }
-  };
-  visit(expression);
-  const partialPressureRefs = refs.filter(
-    (id) => {
-      const target = stepById.get(id)?.calculation?.target;
-      return (
-        target?.source === "REASONING_QUANTITY" &&
-        target.reasoningNodeId.startsWith("partial-pressure-")
-      );
-    },
-  );
-  return new Set(partialPressureRefs).size >= 2;
-}
-
 function latestResultStep(attempt: NormalizedAttempt): NormalizedStep | null {
   return latestStepMatching(
     attempt,
@@ -138,33 +111,50 @@ function linkedHintStepIds(
   problem: DiagnosticProblemDefinitionV2,
   attempt: NormalizedAttempt,
   baseEvaluation: ExpectedStageEvaluation,
+  decisionRevision: AttemptRevision,
 ): readonly string[] {
   const eventById = new Map(attempt.assistanceEvents.map((event) => [event.id, event]));
-  for (const revision of orderedRevisions(attempt)) {
-    for (const eventId of revision.precededByAssistanceEventIds) {
-      const event = eventById.get(eventId);
-      if (!event) continue;
-      const relevant =
-        event.stage === baseEvaluation.category ||
-        event.revealedReasoningNodeIds.some(
-          (nodeId) =>
-            problem.reasoningGraph.nodes[nodeId]?.category === baseEvaluation.category,
-        );
-      if (!relevant) continue;
-      const evidencedStepIds = revision.stepIds.filter((stepId) =>
-        baseEvaluation.evidenceStepIds.includes(stepId),
+  for (const eventId of decisionRevision.precededByAssistanceEventIds) {
+    const event = eventById.get(eventId);
+    if (!event) continue;
+    const relevant =
+      event.stage === baseEvaluation.category ||
+      event.revealedReasoningNodeIds.some(
+        (nodeId) =>
+          problem.reasoningGraph.nodes[nodeId]?.category === baseEvaluation.category,
       );
-      if (evidencedStepIds.length > 0) return evidencedStepIds;
-      if (
-        baseEvaluation.status === "NOT_OBSERVED" &&
-        event.revealedReasoningNodeIds.length > 0 &&
-        revision.stepIds.length > 0
-      ) {
-        return revision.stepIds;
-      }
-    }
+    if (!relevant) continue;
+    const evidencedStepIds = decisionRevision.stepIds.filter((stepId) =>
+      baseEvaluation.evidenceStepIds.includes(stepId),
+    );
+    if (evidencedStepIds.length > 0) return evidencedStepIds;
   }
   return [];
+}
+
+export function applyHintSupportOverlay(
+  problem: DiagnosticProblemDefinitionV2,
+  attempt: NormalizedAttempt,
+  baseStageEvaluations: readonly ExpectedStageEvaluation[],
+  decisionRevision: AttemptRevision | null,
+): readonly ExpectedStageEvaluation[] {
+  if (!decisionRevision) return baseStageEvaluations;
+  return baseStageEvaluations.map((item) => {
+    if (item.status === "INCORRECT") return item;
+    const supportedStepIds = linkedHintStepIds(
+      problem,
+      attempt,
+      item,
+      decisionRevision,
+    );
+    return supportedStepIds.length > 0
+      ? {
+          ...item,
+          status: "SUPPORTED_BY_HINT" as const,
+          evidenceStepIds: supportedStepIds,
+        }
+      : item;
+  });
 }
 
 export function runDeterministicChecks(
@@ -177,7 +167,15 @@ export function runDeterministicChecks(
   const compressedMatched = selectedStrategy?.strategyId === "COMPRESSED_DIRECT_SUBSTITUTION";
   const attemptSteps = orderedSteps(attempt);
   const allStepIds = attemptSteps.map(({ id }) => id);
-  const stepById = new Map(attemptSteps.map((step) => [step.id, step]));
+  const equationSemantics = analyzeAuthoredEquationSemantics(problem, attempt);
+  const firstSemanticMismatch = attemptSteps.find(
+    (step) =>
+      equationSemantics.get(step.id)?.authoritative &&
+      !equationSemantics.get(step.id)?.valid &&
+      (!step.calculation ||
+        !analyzeCompressedCalculation(problem, step.calculation.expression)
+          .dependenciesComplete),
+  );
   const resultStep = latestResultStep(attempt);
   const resultStepIds = resultStep ? [resultStep.id] : [];
   const compressedAnalysis = resultStep?.calculation
@@ -345,11 +343,17 @@ export function runDeterministicChecks(
   let substitution: StageValue;
   if (formulaStage.status === "INCORRECT") {
     substitution = evaluation("DOWNSTREAM_AFFECTED", formulaStepIds);
+  } else if (firstSemanticMismatch) {
+    substitution = evaluation(
+      "INCORRECT",
+      [firstSemanticMismatch.id],
+      "WRONG_DEPENDENCY_USED",
+    );
   } else if (!resultStep?.calculation) {
     substitution = evaluation("NOT_OBSERVED");
   } else if (
     isCompleteCompressedCalculation(problem, resultStep.calculation.expression) ||
-    referencesPriorPartialPressures(resultStep.calculation.expression, stepById)
+    equationSemantics.get(resultStep.id)?.valid
   ) {
     substitution = evaluation("CORRECT", explicitMatched ? allStepIds : resultStepIds);
   } else if (comparison === "EQUIVALENT") {
@@ -410,20 +414,9 @@ export function runDeterministicChecks(
           : "NOT_RUN",
     failureCode: item.status === "INCORRECT" ? item.failureCode : null,
   }));
-  const stageEvaluations = baseStageEvaluations.map((item) => {
-    if (item.status === "INCORRECT") return item;
-    const supportedStepIds = linkedHintStepIds(problem, attempt, item);
-    return supportedStepIds.length > 0
-      ? {
-          ...item,
-          status: "SUPPORTED_BY_HINT" as const,
-          evidenceStepIds: supportedStepIds,
-        }
-      : item;
-  });
   return {
     deterministicChecks,
-    stageEvaluations,
+    stageEvaluations: baseStageEvaluations,
     selectedStrategyId: selectedStrategy?.strategyId ?? null,
   };
 }

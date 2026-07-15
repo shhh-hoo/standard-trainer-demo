@@ -1,5 +1,5 @@
-import { runDeterministicChecks } from "./deterministicChecks";
-import { latestRevision, latestStepMatching, revisionForStep } from "./attemptOrder";
+import { applyHintSupportOverlay, runDeterministicChecks } from "./deterministicChecks";
+import { resolveDecisionRevision } from "./attemptOrder";
 import { aggregateRecognitionGate } from "./recognitionGate";
 import { alignReasoningEvidence } from "./reasoningAlignment";
 import { validateSupportedDiagnosticProblem } from "./supportedProblem";
@@ -36,22 +36,12 @@ function supportOutcome(
   attempt: NormalizedAttempt,
   solved: boolean,
   recognitionPassed: boolean,
+  decisionRevision: ReturnType<typeof resolveDecisionRevision>,
 ): AttemptSupportOutcome {
   if (!recognitionPassed) return "INSUFFICIENT_EVIDENCE";
-  const resultStep = latestStepMatching(
-    attempt,
-    (step) =>
-      step.calculation?.target.source === "REASONING_QUANTITY" &&
-      step.calculation.target.reasoningNodeId === "calculate-result",
-  );
-  const causalRevision = resultStep
-    ? revisionForStep(attempt, resultStep.id)
-    : solved
-      ? null
-      : latestRevision(attempt);
-  const causalEvents = causalRevision
+  const causalEvents = decisionRevision
     ? attempt.assistanceEvents.filter((event) =>
-        causalRevision.precededByAssistanceEventIds.includes(event.id),
+        decisionRevision.precededByAssistanceEventIds.includes(event.id),
       )
     : [];
   const highestLevel = causalEvents.reduce((highest, event) => Math.max(highest, event.level), 0);
@@ -67,6 +57,23 @@ function supportOutcome(
         : highestLevel === 1
           ? "SOLVED_AFTER_METACOGNITIVE_PROMPT"
           : "SOLVED_INDEPENDENTLY";
+}
+
+function satisfiesSolvedRequirements(
+  stageEvaluations: readonly ExpectedStageEvaluation[],
+  selectedStrategyId: string | null,
+): boolean {
+  const status = (category: ExpectedStageEvaluation["category"]) =>
+    stageEvaluations.find((evaluation) => evaluation.category === category)?.status;
+  return (
+    !stageEvaluations.some(({ status: stageStatus }) => stageStatus === "INCORRECT") &&
+    selectedStrategyId !== null &&
+    ["CORRECT", "SUPPORTED_BY_HINT"].includes(status("FORMULA") ?? "") &&
+    ["CORRECT", "SUPPORTED_BY_HINT"].includes(status("SUBSTITUTION") ?? "") &&
+    status("ARITHMETIC") === "CORRECT" &&
+    status("UNIT") === "CORRECT" &&
+    status("PRECISION") === "CORRECT"
+  );
 }
 
 function gatedStages(
@@ -117,6 +124,7 @@ export function diagnoseNormalizedAttempt(
     let deterministicChecks: DiagnosticEvidenceTraceV2["deterministicChecks"] = [];
     let stageEvaluations: DiagnosticEvidenceTraceV2["stageEvaluations"];
     let selectedStrategyId: string | null = null;
+    let decisionRevision: ReturnType<typeof resolveDecisionRevision> = null;
 
     if (recognitionGate.decision !== "PASSED") {
       stageEvaluations = gatedStages(recognitionGate);
@@ -125,28 +133,37 @@ export function diagnoseNormalizedAttempt(
       const checks = runDeterministicChecks(supportedProblem.value, normalized, alignment);
       alignmentEvidence = alignment.evidence;
       deterministicChecks = checks.deterministicChecks;
-      stageEvaluations = checks.stageEvaluations;
       selectedStrategyId = checks.selectedStrategyId;
+      const solvedRevision = resolveDecisionRevision(normalized, true);
+      const solvedCandidateStages = applyHintSupportOverlay(
+        supportedProblem.value,
+        normalized,
+        checks.stageEvaluations,
+        solvedRevision,
+      );
+      if (satisfiesSolvedRequirements(solvedCandidateStages, selectedStrategyId)) {
+        stageEvaluations = solvedCandidateStages;
+        decisionRevision = solvedRevision;
+      } else {
+        decisionRevision = resolveDecisionRevision(normalized, false);
+        stageEvaluations = applyHintSupportOverlay(
+          supportedProblem.value,
+          normalized,
+          checks.stageEvaluations,
+          decisionRevision,
+        );
+      }
     }
 
     const firstIncorrect = stageEvaluations.find(({ status }) => status === "INCORRECT");
     const solved =
       recognitionGate.decision === "PASSED" &&
-      !firstIncorrect &&
-      selectedStrategyId !== null &&
-      ["CORRECT", "SUPPORTED_BY_HINT"].includes(
-        stageEvaluations.find(({ category }) => category === "FORMULA")?.status ?? "",
-      ) &&
-      ["CORRECT", "SUPPORTED_BY_HINT"].includes(
-        stageEvaluations.find(({ category }) => category === "SUBSTITUTION")?.status ?? "",
-      ) &&
-      stageEvaluations.find(({ category }) => category === "ARITHMETIC")?.status === "CORRECT" &&
-      stageEvaluations.find(({ category }) => category === "UNIT")?.status === "CORRECT" &&
-      stageEvaluations.find(({ category }) => category === "PRECISION")?.status === "CORRECT";
+      satisfiesSolvedRequirements(stageEvaluations, selectedStrategyId);
     const attemptSupportOutcome = supportOutcome(
       normalized,
       solved,
       recognitionGate.decision === "PASSED",
+      decisionRevision,
     );
     const decision =
       recognitionGate.decision !== "PASSED"
@@ -183,7 +200,11 @@ export function diagnoseNormalizedAttempt(
       attemptSupportOutcome,
       submittedAt: context.submittedAt,
     };
-    const traceValidation = validateDiagnosticEvidenceTraceV2(trace, supportedProblem.value);
+    const traceValidation = validateDiagnosticEvidenceTraceV2(trace, supportedProblem.value, {
+      attempt: normalized,
+      selectedStrategyId,
+      decisionRevisionId: decisionRevision?.id ?? null,
+    });
     return traceValidation.ok
       ? { ok: true, trace: traceValidation.value }
       : {

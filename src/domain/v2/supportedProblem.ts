@@ -1,39 +1,29 @@
-import type { DiagnosticProblemDefinitionV2 } from "./types";
+import { kpGoldProblemV2 } from "../../fixtures/v2/kpGoldProblem";
 import type { ValidationResult } from "./runtimeValidation";
+import type { DiagnosticProblemDefinitionV2 } from "./types";
 
-const supportedNodeIds = [
-  "select-relevant-data",
-  "identify-kp-target",
-  "choose-partial-pressure-strategy",
-  "total-moles",
-  "mole-fraction-n2o4",
-  "mole-fraction-no2",
-  "partial-pressure-n2o4",
-  "partial-pressure-no2",
-  "construct-kp-expression",
-  "substitute-values",
-  "calculate-result",
-  "report-unit",
-  "report-precision",
-] as const;
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, canonicalize(nested)]),
+  );
+}
+
+export function canonicalizeDiagnosticProblem(
+  problem: DiagnosticProblemDefinitionV2,
+): string {
+  return JSON.stringify(canonicalize(problem));
+}
+
+const canonicalSupportedProblem = canonicalizeDiagnosticProblem(kpGoldProblemV2);
 
 export function validateSupportedDiagnosticProblem(
   problem: DiagnosticProblemDefinitionV2,
 ): ValidationResult<DiagnosticProblemDefinitionV2> {
-  const supported =
-    problem.id === "KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD" &&
-    problem.version === "2.0.0-gold.2" &&
-    problem.reasoningGraph.version === "kp-reasoning-graph-v2.0.0-gold.2" &&
-    problem.diagnosisPolicyVersion === "diagnosis-policy-v2.0.0-gold.2" &&
-    problem.recognitionPolicy.version === "recognition-policy-v2.0.0-gold.2" &&
-    problem.hintPolicy.version === "hint-policy-v2.0.0-gold.2" &&
-    JSON.stringify(problem.reasoningGraph.pedagogicalOrder) ===
-      JSON.stringify(supportedNodeIds) &&
-    JSON.stringify(problem.reasoningGraph.acceptedStrategies.map(({ id }) => id)) ===
-      JSON.stringify(["EXPLICIT_PARTIAL_PRESSURES", "COMPRESSED_DIRECT_SUBSTITUTION"]) &&
-    JSON.stringify(problem.formulaDefinitions.map(({ id }) => id)) ===
-      JSON.stringify(["formula-kp-no2-n2o4"]);
-  return supported
+  return canonicalizeDiagnosticProblem(problem) === canonicalSupportedProblem
     ? { ok: true, value: problem }
     : {
         ok: false,
@@ -42,7 +32,7 @@ export function validateSupportedDiagnosticProblem(
             path: "$problem",
             code: "UNSUPPORTED_PROBLEM_DEFINITION",
             message:
-              "This engine only supports KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.2.",
+              "This engine only supports the exact canonical KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.2 definition.",
           },
         ],
       };

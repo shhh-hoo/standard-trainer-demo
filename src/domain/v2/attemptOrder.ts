@@ -31,3 +31,17 @@ export function revisionForStep(
 ): AttemptRevision | null {
   return orderedRevisions(attempt).find((revision) => revision.stepIds.includes(stepId)) ?? null;
 }
+
+export function resolveDecisionRevision(
+  attempt: NormalizedAttempt,
+  solved: boolean,
+): AttemptRevision | null {
+  if (!solved) return latestRevision(attempt);
+  const resultStep = latestStepMatching(
+    attempt,
+    (step) =>
+      step.calculation?.target.source === "REASONING_QUANTITY" &&
+      step.calculation.target.reasoningNodeId === "calculate-result",
+  );
+  return resultStep ? revisionForStep(attempt, resultStep.id) : null;
+}

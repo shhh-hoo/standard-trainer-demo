@@ -19,13 +19,17 @@ export {
   type FormulaComparison,
 } from "./expressionEvaluator";
 export { aggregateRecognitionGate, type RecognitionGateResult } from "./recognitionGate";
-export { validateSupportedDiagnosticProblem } from "./supportedProblem";
+export {
+  canonicalizeDiagnosticProblem,
+  validateSupportedDiagnosticProblem,
+} from "./supportedProblem";
 export {
   validateDiagnosticEvidenceTraceV2,
   validateDiagnosticProblemDefinitionV2,
   validateNormalizedAttempt,
   type ValidationIssue,
   type ValidationResult,
+  type TraceValidationContext,
 } from "./runtimeValidation";
 export { V2_CONTRACT_VERSION } from "./types";
 export type {
