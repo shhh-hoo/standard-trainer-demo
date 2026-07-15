@@ -3,6 +3,7 @@ import path from "node:path";
 
 export interface LearnerDiagnosisTraceRecord {
   readonly traceId: string;
+  readonly runPurpose: "PRODUCT" | "AGENT_EVAL";
   readonly request: unknown;
   readonly component: { readonly id: string; readonly version: string; readonly contentHash: string };
   readonly runtimeVersion: string;
@@ -10,6 +11,8 @@ export interface LearnerDiagnosisTraceRecord {
   readonly recommendedSupport: string | null;
   readonly timestamp: string;
 }
+
+export type DiagnosisRunPurpose = LearnerDiagnosisTraceRecord["runPurpose"];
 
 const excludedKeys = new Set(["reasoning_content", "hidden_reasoning", "authorization", "api_key", "apikey"]);
 
@@ -64,4 +67,22 @@ export class LearnerDiagnosisTraceRepository {
     await mkdir(this.directory, { recursive: true });
     await Promise.all((await readdir(this.directory)).filter((name) => name.endsWith(".json")).map((name) => unlink(path.join(this.directory, name))));
   }
+}
+
+export class PurposeSeparatedLearnerDiagnosisTraceRepository {
+  private readonly product: LearnerDiagnosisTraceRepository;
+  private readonly agentEval: LearnerDiagnosisTraceRepository;
+  constructor(productDirectory: string, agentEvalDirectory: string) {
+    this.product = new LearnerDiagnosisTraceRepository(productDirectory);
+    this.agentEval = new LearnerDiagnosisTraceRepository(agentEvalDirectory);
+  }
+  forPurpose(runPurpose: DiagnosisRunPurpose): LearnerDiagnosisTraceRepository { return runPurpose === "PRODUCT" ? this.product : this.agentEval; }
+  async save(record: LearnerDiagnosisTraceRecord): Promise<void> { await this.forPurpose(record.runPurpose).save(record); }
+  async get(traceId: string): Promise<LearnerDiagnosisTraceRecord | null> { return await this.product.get(traceId) ?? await this.agentEval.get(traceId); }
+  async list(runPurpose?: DiagnosisRunPurpose): Promise<readonly LearnerDiagnosisTraceRecord[]> {
+    if (runPurpose) return this.forPurpose(runPurpose).list();
+    const records = await Promise.all([this.product.list(), this.agentEval.list()]);
+    return records.flat().sort((left, right) => left.timestamp.localeCompare(right.timestamp));
+  }
+  async clear(runPurpose: DiagnosisRunPurpose): Promise<void> { await this.forPurpose(runPurpose).clear(); }
 }

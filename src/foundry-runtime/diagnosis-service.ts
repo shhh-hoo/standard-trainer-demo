@@ -8,6 +8,7 @@ import type {
 } from "./types";
 
 export interface LearnerDiagnosisRequest {
+  readonly runPurpose: "PRODUCT" | "AGENT_EVAL";
   readonly componentId: string;
   readonly componentVersion?: string;
   readonly problemContext: {
@@ -17,10 +18,18 @@ export interface LearnerDiagnosisRequest {
     readonly targetQuantity: string;
     readonly answerRequirement?: string;
   };
+  readonly problemContextEvidence: {
+    readonly promptQuote: string;
+    readonly reactionEquationQuote: string;
+    readonly givenValueQuotes: readonly string[];
+    readonly targetQuantityQuote: string;
+    readonly answerRequirementQuote: string;
+  };
   readonly attempt: unknown;
 }
 
 export interface LearnerDiagnosisResponse {
+  readonly runPurpose: "PRODUCT" | "AGENT_EVAL";
   readonly componentId: string;
   readonly componentVersion: string;
   readonly diagnosis: {
@@ -57,6 +66,13 @@ function validateProblemContext(value: LearnerDiagnosisRequest["problemContext"]
   if (value.givenValues.some((item) => !item.label?.trim() || !Number.isFinite(item.value) || !item.unit?.trim())) serviceError("INCOMPLETE_PROBLEM_CONTEXT", "Every given value requires a label, finite value and unit.");
 }
 
+function validateProblemContextEvidence(request: LearnerDiagnosisRequest): void {
+  const evidence = request.problemContextEvidence;
+  if (!evidence || !evidence.promptQuote?.trim() || !evidence.reactionEquationQuote?.trim() || !evidence.targetQuantityQuote?.trim() || !evidence.answerRequirementQuote?.trim() || !Array.isArray(evidence.givenValueQuotes) || evidence.givenValueQuotes.length !== request.problemContext.givenValues.length || evidence.givenValueQuotes.some((quote) => !quote.trim())) {
+    serviceError("INCOMPLETE_PROBLEM_CONTEXT_EVIDENCE", "Problem context requires non-empty, one-to-one provenance quotes.");
+  }
+}
+
 export async function runLearnerDiagnosis(
   request: LearnerDiagnosisRequest,
   dependencies: LearnerDiagnosisDependencies,
@@ -64,6 +80,7 @@ export async function runLearnerDiagnosis(
   const component = dependencies.registry.get(request.componentId, request.componentVersion);
   if (!component) serviceError("COMPONENT_NOT_FOUND", `No published component matches ${request.componentId}${request.componentVersion ? `@${request.componentVersion}` : ""}.`);
   validateProblemContext(request.problemContext);
+  validateProblemContextEvidence(request);
   const attempt = parseAttempt(request.attempt);
   const traceId = dependencies.createId?.() ?? `trainer-trace-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
   const result = evaluatePublishedAttempt(component, attempt, {
@@ -73,6 +90,7 @@ export async function runLearnerDiagnosis(
   if (!result.ok) serviceError(result.kind, result.issues.map((issue) => `${issue.code}: ${issue.message}`).join("; "));
   const support = selectSupportHint(component, result.trace);
   return {
+    runPurpose: request.runPurpose,
     componentId: component.id,
     componentVersion: component.version,
     diagnosis: {

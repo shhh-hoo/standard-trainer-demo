@@ -4,6 +4,7 @@ import { STANDARD_TRAINER_CAPABILITY } from "./capability";
 export interface LearnerDiagnosisTraceStore {
   save(record: {
     readonly traceId: string;
+    readonly runPurpose: "PRODUCT" | "AGENT_EVAL";
     readonly request: LearnerDiagnosisRequest;
     readonly component: { readonly id: string; readonly version: string; readonly contentHash: string };
     readonly runtimeVersion: string;
@@ -12,8 +13,8 @@ export interface LearnerDiagnosisTraceStore {
     readonly timestamp: string;
   }): Promise<void>;
   get(traceId: string): Promise<unknown | null>;
-  list(): Promise<readonly unknown[]>;
-  clear?(): Promise<void>;
+  list(runPurpose?: "PRODUCT" | "AGENT_EVAL"): Promise<readonly unknown[]>;
+  clear?(runPurpose: "PRODUCT" | "AGENT_EVAL"): Promise<void>;
 }
 
 function json(status: number, body: unknown): Response {
@@ -45,17 +46,21 @@ export function createDiagnosisApiHandler(dependencies: LearnerDiagnosisDependen
       return diagnosis ? json(200, { ok: true, diagnosis }) : json(404, { ok: false, error: { code: "DIAGNOSIS_TRACE_NOT_FOUND", message: "No persisted Learner Diagnosis has this trace id." } });
     }
     if (request.method === "GET" && url.pathname === "/diagnoses") {
-      return json(200, { ok: true, diagnoses: repository ? await repository.list() : [] });
+      const purpose = url.searchParams.get("runPurpose");
+      const runPurpose = purpose === "PRODUCT" || purpose === "AGENT_EVAL" ? purpose : undefined;
+      return json(200, { ok: true, diagnoses: repository ? await repository.list(runPurpose) : [] });
     }
     if (request.method === "DELETE" && url.pathname === "/diagnoses") {
-      await repository?.clear?.();
-      return json(200, { ok: true, cleared: "diagnoses" });
+      const purpose = url.searchParams.get("runPurpose");
+      if (purpose !== "PRODUCT" && purpose !== "AGENT_EVAL") return json(400, { ok: false, error: { code: "RUN_PURPOSE_REQUIRED", message: "Choose PRODUCT or AGENT_EVAL diagnoses to clear." } });
+      await repository?.clear?.(purpose);
+      return json(200, { ok: true, cleared: "diagnoses", runPurpose: purpose });
     }
     if (request.method === "POST" && url.pathname === "/diagnose") {
       try {
         const body = await request.json() as Partial<LearnerDiagnosisRequest>;
-        if (typeof body.componentId !== "string" || !body.componentId || !("problemContext" in body) || !("attempt" in body)) {
-          throw new Error("INVALID_DIAGNOSIS_REQUEST: componentId, problemContext and attempt are required.");
+        if ((body.runPurpose !== "PRODUCT" && body.runPurpose !== "AGENT_EVAL") || typeof body.componentId !== "string" || !body.componentId || !("problemContext" in body) || !("problemContextEvidence" in body) || !("attempt" in body)) {
+          throw new Error("INVALID_DIAGNOSIS_REQUEST: runPurpose, componentId, problemContext, problemContextEvidence and attempt are required.");
         }
         const diagnosisRequest = body as LearnerDiagnosisRequest;
         const result = await runLearnerDiagnosis(diagnosisRequest, dependencies);
@@ -63,6 +68,7 @@ export function createDiagnosisApiHandler(dependencies: LearnerDiagnosisDependen
         if (!component) throw new Error("COMPONENT_NOT_FOUND: Diagnosed component is no longer resolvable.");
         await repository?.save({
           traceId: result.traceId,
+          runPurpose: diagnosisRequest.runPurpose,
           request: diagnosisRequest,
           component: { id: component.id, version: component.version, contentHash: component.publication.contentHash },
           runtimeVersion: STANDARD_TRAINER_CAPABILITY.runtimeVersion,

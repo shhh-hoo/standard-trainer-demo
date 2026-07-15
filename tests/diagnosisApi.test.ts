@@ -41,6 +41,7 @@ describe("Trainer Diagnosis HTTP contract", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
+        runPurpose: "PRODUCT",
         componentId: component!.id,
         problemContext: {
           prompt: component!.presentation.prompt,
@@ -48,6 +49,13 @@ describe("Trainer Diagnosis HTTP contract", () => {
           givenValues: component!.authoredFacts.filter((fact) => typeof fact.value === "number").map((fact) => ({ label: fact.label, value: fact.value, unit: fact.unit ?? "unitless" })),
           targetQuantity: component!.presentation.title,
           answerRequirement: `${component!.target.significantFigures} significant figures`,
+        },
+        problemContextEvidence: {
+          promptQuote: component!.presentation.prompt,
+          reactionEquationQuote: component!.presentation.reaction,
+          givenValueQuotes: component!.authoredFacts.filter((fact) => typeof fact.value === "number").map((fact) => `${fact.label}: ${fact.value} ${fact.unit ?? "unitless"}`),
+          targetQuantityQuote: component!.presentation.title,
+          answerRequirementQuote: `${component!.target.significantFigures} significant figures`,
         },
         attempt: {
           attemptId: "api-attempt", componentId: component!.id, componentVersion: component!.version,
