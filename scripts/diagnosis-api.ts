@@ -5,6 +5,8 @@ import {
   createDiagnosisApiHandler,
   loadMergedRegistry,
 } from "../src/foundry-runtime/index.ts";
+import path from "node:path";
+import { LearnerDiagnosisTraceRepository } from "./lib/learner-diagnosis-trace-repository.ts";
 
 const port = Number(process.env.TRAINER_DIAGNOSIS_PORT ?? 4177);
 const providers = [
@@ -12,7 +14,8 @@ const providers = [
   ...(process.env.COMPONENT_REGISTRY_URL ? [new LocalDemoRegistryProvider(process.env.COMPONENT_REGISTRY_URL)] : []),
 ];
 const registry = await loadMergedRegistry(providers);
-const handle = createDiagnosisApiHandler({ registry });
+const repository = new LearnerDiagnosisTraceRepository(process.env.DIAGNOSIS_TRACE_STORE_DIR ?? path.resolve(".local-data/diagnosis-traces"));
+const handle = createDiagnosisApiHandler({ registry }, repository);
 
 const server = createServer(async (request, response) => {
   const chunks: Buffer[] = [];
