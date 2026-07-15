@@ -19,10 +19,7 @@ export {
   type FormulaComparison,
 } from "./expressionEvaluator";
 export { aggregateRecognitionGate, type RecognitionGateResult } from "./recognitionGate";
-export {
-  canonicalizeDiagnosticProblem,
-  validateSupportedDiagnosticProblem,
-} from "./supportedProblem";
+export { validateSupportedDiagnosticProblem } from "./supportedProblem";
 export {
   validateDiagnosticEvidenceTraceV2,
   validateDiagnosticProblemDefinitionV2,

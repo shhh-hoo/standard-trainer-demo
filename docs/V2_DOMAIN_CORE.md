@@ -1,6 +1,6 @@
 # V2 deterministic diagnostic domain core
 
-The V2 domain core executes the already-authored `2.0.0-draft.2` measurement contract for `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.2`. It is a deterministic evidence processor, not a text parser or tutoring UI.
+The V2 domain core executes the already-authored `2.0.0-draft.2` measurement contract used by the migrated Kp component. It remains a deterministic evidence processor, not a text parser or tutoring UI. The Foundry-published component runtime is a separate consumer boundary in `src/foundry-runtime`.
 
 ## Public request path
 
@@ -11,7 +11,7 @@ The fixed request path is:
 ```text
 unknown input
 → validate problem
-→ reject definitions outside the supported gold authority
+→ validate bounded schema, graph, formula, strategy and hint references
 → validate normalized attempt
 → aggregate recognition gate
 → align structured reasoning evidence
@@ -23,7 +23,7 @@ unknown input
 → validate the output trace
 ```
 
-Invalid user input returns structured validation issues. `validateDiagnosticProblemDefinitionV2` is a generic shape validator; shape-valid does not mean engine-supported. `validateSupportedDiagnosticProblem` compares a key-order-independent canonical serialization of the complete definition with `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD@2.0.0-gold.2`, so unchanged version labels cannot authorize mutated facts, targets, formulae, strategies, policies, or hints. Only an unexpected internal invariant is reported as `INTERNAL_INVARIANT_FAILURE`.
+Invalid input returns structured validation issues. `validateDiagnosticProblemDefinitionV2` checks shape, while `validateSupportedDiagnosticProblem` now checks the bounded structural and internal-reference constraints required by this Kp engine. It no longer treats one serialized fixture as permanent component authority. Published identity, immutability, content hash, runtime capability, and target-adapter selection are enforced by the Foundry consumer boundary before its components reach learner diagnosis. Only an unexpected internal invariant is reported as `INTERNAL_INVARIANT_FAILURE`.
 
 ## Runtime validation boundary
 
@@ -75,6 +75,6 @@ All temporal semantics use revision sequence and revision `stepIds`; the physica
 
 ## Trust boundary and exclusions
 
-The gold suite plus adversarial tests prove bounded behavior for the one supported definition; they do not establish curriculum coverage, transfer, or mastery. The live public learner UI remains V0.1.
+The gold suite plus adversarial tests preserve the legacy V2 Kp regression; they do not establish broad curriculum coverage, transfer, or mastery. The learner UI separately exposes two immutable Foundry-published components through bounded target adapters; the simplified published Kp component proves happy-path parity only.
 
 This core adds no learner UI, OCR, image/digital-ink ingestion UI, camera access, real text parser, LLM/model/provider integration, server endpoint, secrets, hint-delivery UI, retry orchestration, transfer item, question generation, persistence migration, authentication, analytics, general dimensional algebra, general symbolic algebra, or general ECF claim.

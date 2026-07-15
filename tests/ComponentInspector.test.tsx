@@ -38,9 +38,9 @@ describe("trainer component inspector", () => {
     expect(screen.getByText("INVERTED_RELATION")).toBeVisible();
     expect(screen.getByText("TYPED_WORKING_MOCK")).toBeVisible();
 
-    expect(screen.getByRole("link", { name: "Open legacy V0.1 proof" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Open published runtime" })).toHaveAttribute(
       "href",
-      "?view=legacy",
+      "?",
     );
     expect(screen.queryByText(/OCR is enabled/i)).not.toBeInTheDocument();
     expect(

@@ -1,65 +1,38 @@
-# Calculation Path Trainer
+# Standard Trainer Demo
 
-## Product statement
+Standard Trainer is a deterministic runtime that consumes published diagnostic learning components and evaluates learner evidence against their authored reasoning contracts.
 
-Calculation Path Trainer is a deterministic chemistry calculation-path diagnosis proof for Cambridge A-Level Chemistry-style structured working. It collects an authored sequence of calculation steps, checks each step against one immutable canonical solution graph, and identifies the first invalid step instead of generating a general answer.
+Learning Foundry is the upstream authority for governed learning components. This repository is its first downstream runtime; it does not author, review, modify, or publish component definitions.
 
-The current release contains exactly one curated problem: `KP_FROM_EQUILIBRIUM_MOLES`. It is a bounded engine proof, not a complete learning platform.
+## Published capability
 
-V0.1 remains the frozen learner baseline. The `2.0.0-draft.2` modality-neutral measurement contract is documented in [V2 Measurement Contract](docs/V2_MEASUREMENT_CONTRACT.md), and its deterministic runtime is implemented in the [V2 Domain Core](docs/V2_DOMAIN_CORE.md). The runtime is now exposed through a bounded [V2 Trainer Component Boundary](docs/COMPONENT_BOUNDARY.md): manifest, capability preflight, invocation envelope, and structured result envelope. The default browser view is a developer component inspector; the legacy learner proof remains available with `?view=legacy`.
+The default UI loads an immutable Foundry registry and lets the learner select:
 
-## Live Demo
+- **Kp from equilibrium amounts** — a simplified Foundry migration from `KP_FROM_EQUILIBRIUM_MOLES_V2_GOLD`, providing bounded happy-path compatibility with explicit omitted V2 capabilities;
+- **Stoichiometric product mass** — an expert-authored `2Mg + O₂ → 2MgO` mass calculation.
 
-[Open the verified live demo](https://shhh-hoo.github.io/standard-trainer-demo/)
+The runtime supports `KP` and `MASS` target adapters, structured learner evidence, authored fact checks, reasoning-link requirements, target checks, deterministic arithmetic, units, significant figures, and versioned evidence traces. Unsupported target kinds, unmanifested snapshots, unresolved references, and content-hash mismatches fail closed.
 
-## What it proves
+The separately tested V2 component inspector from the previous release remains available with `?view=inspector`. It exposes the legacy Kp manifest, capability preflight, typed invocation envelope, developer fixtures, and structured result envelope; it is not the learner-facing published registry.
 
-- A versioned, immutable `ProblemDefinition` for one curated Kp calculation.
-- An explicit seven-step canonical solution graph with dependency metadata.
-- Deterministic numeric, curated-expression, unit, and significant-figure tools.
-- First-invalid-step diagnosis; later steps are recorded as `NOT_EVALUATED`.
-- Separate path decisions and failure codes.
-- Runtime-validated, versioned evidence traces.
-- Honest browser persistence with `PERSISTED`, `MEMORY_ONLY`, and `FAILED` states.
-- JSON evidence export.
-- A responsive, keyboard-accessible React workbench.
-- CI-backed type checking, tests, and production builds.
-- A separate V2 deterministic domain API with fail-closed input/trace validation.
-- Exact engine diagnosis for 16 authored V2 gold fixtures and four explicit typed mock scenarios.
-- A public trainer-component contract that distinguishes exact, partial, and unsupported requests before invocation.
-- Runtime-validated invocation envelopes that fail closed and retain issue paths.
-- Operational inputs separated from developer-only authored fixtures.
-- A minimal developer inspector for the manifest, capability fit, explicit mock invocation, and evidence trace.
+## Reliable core retained
 
-## Explicit limitations
-
-This proof does **not** include:
-
-- LLM calls or agent orchestration;
-- natural-language student-step parsing;
-- arbitrary expression or question parsing;
-- generated questions;
-- hints or learner modelling;
-- bounded or general error-carried-forward (ECF) judgement;
-- production authentication;
-- a remote backend or tamper-proof audit storage.
-- a Learning Foundry shell, registry, capability-gap store, or temporary support generator.
-
-The expression checker is a versioned whitelist matcher for the curated Kp problem, not a symbolic algebra system. The solution graph records explicit dependencies, but the current engine evaluates steps in authored canonical order. Trace validation checks shape and internal consistency; it is not a cryptographic integrity proof. Browser storage and exported JSON remain under the learner's control.
+The frozen V0.1 calculation-path assets and tests remain in the repository. The legacy V2 deterministic domain core continues to run its full Kp gold and adversarial fixtures. The separate Foundry-published Kp adapter proves bounded structured happy-path decision parity only; its migration metadata explicitly records omitted V2 capabilities. Immutable Foundry snapshots provide publication identity at that new runtime boundary.
 
 ## Architecture
 
 ```text
-src/domain/    Pure engine, deterministic tools, trace validation, persistence boundary
-src/fixtures/  Immutable curated problem and canonical solution graph
-src/component/ Public manifest, preflight, invocation, and result envelopes
-src/ComponentInspector.tsx  Minimal developer component inspector
-src/App.tsx    Frozen V0.1 structured-input workbench
-tests/         Engine, graph, archive, and UI behavior
-docs/          Architecture, case study, deployment, and demo material
+Foundry manifest + published snapshots
+→ schema and content-hash validation
+→ capability and internal-reference validation
+→ immutable component registry
+→ KP or MASS target adapter
+→ shared structured checks
+→ first pedagogical error
+→ version-pinned learner evidence trace
 ```
 
-See [Architecture](docs/ARCHITECTURE.md) for the current data flow and trust boundary, and [Calculation Path Core](docs/CALCULATION_PATH_CORE.md) for the graph contract.
+The adapters share fact, strategy, reasoning-link, arithmetic, target, unit, precision, and trace logic. Stoichiometric ratio logic remains inside `MassStoichiometryTargetAdapter`; target-specific rules are not duplicated into a second diagnosis engine.
 
 ## Verification
 
@@ -70,17 +43,8 @@ npm test
 npm run build
 ```
 
-The current suite contains 90 tests: 15 for the frozen V0.1 runtime, 15 contract-integrity checks for the V2 gold artifacts, 50 runtime/core/adapter/adversarial checks for the deterministic V2 implementation, and 10 component-boundary and inspector checks. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2), the V2 contract baseline in [PR #5](https://github.com/shhh-hoo/standard-trainer-demo/pull/5), and the deterministic V2 core in [PR #6](https://github.com/shhh-hoo/standard-trainer-demo/pull/6).
+## Explicit limitations
 
-## Demo walkthrough
+This is a bounded static runtime, not a general Chemistry solver or LMS. It does not accept arbitrary generated components, arbitrary questions, free-form reasoning, handwriting, OCR, general symbolic algebra, or general ECF judgement. It has no server, authentication, database, or tamper-proof evidence store. The demo content hash detects snapshot mutation within this boundary; it is not a cryptographic identity or signature.
 
-1. Inspect the component manifest and its explicit unsupported capabilities.
-2. Compare exact, partial, and unsupported preflight outcomes.
-3. Invoke each of the four authored mock scenarios and inspect the structured evidence trace.
-4. Open `?view=legacy` to verify the frozen V0.1 seven-step proof.
-
-## Portfolio framing
-
-This project demonstrates AI product boundary judgement, deterministic evaluation design, evidence-oriented architecture, and end-to-end engineering ownership. The key product decision was to prove an inspectable calculation-path core before adding probabilistic parsing or orchestration.
-
-The public product rationale, scope decisions, trade-offs, and next validated experiments are documented in the local [Case Study](docs/CASE_STUDY.md). Broader private planning materials are maintained separately and are not required to review this proof.
+See [Architecture](docs/ARCHITECTURE.md), [Demo](docs/DEMO.md), [V2 Domain Core](docs/V2_DOMAIN_CORE.md), [V2 Component Boundary](docs/COMPONENT_BOUNDARY.md), and [Foundry Integration](docs/FOUNDRY_INTEGRATION.md).

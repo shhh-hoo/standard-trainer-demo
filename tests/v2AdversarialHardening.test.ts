@@ -239,25 +239,21 @@ describe("V2 adversarial diagnosis hardening", () => {
     });
   });
 
-  it("rejects a schema-valid problem outside the single supported gold definition", () => {
-    const unsupportedProblem = structuredClone(kpGoldProblemV2);
-    Object.assign(unsupportedProblem, {
+  it("accepts a second structurally valid definition after removing single-gold authority", () => {
+    const additionalProblem = structuredClone(kpGoldProblemV2);
+    Object.assign(additionalProblem, {
       id: "KP_FROM_EQUILIBRIUM_MOLES_V2_OTHER",
       version: "2.0.0-other",
     });
     const attempt = structuredClone(compressedTypedCorrect.attempt);
     Object.assign(attempt, {
-      problemDefinitionId: unsupportedProblem.id,
-      problemDefinitionVersion: unsupportedProblem.version,
+      problemDefinitionId: additionalProblem.id,
+      problemDefinitionVersion: additionalProblem.version,
     });
 
-    const result = diagnoseNormalizedAttempt(unsupportedProblem, attempt, context);
-    expect(result).toMatchObject({
-      ok: false,
-      kind: "INVALID_PROBLEM",
-      issues: [
-        expect.objectContaining({ code: "UNSUPPORTED_PROBLEM_DEFINITION" }),
-      ],
+    expect(diagnoseNormalizedAttempt(additionalProblem, attempt, context)).toMatchObject({
+      ok: true,
+      trace: { decision: "SOLVED", problemDefinitionId: additionalProblem.id },
     });
   });
 });

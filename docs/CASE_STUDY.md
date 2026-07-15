@@ -2,7 +2,7 @@
 
 ## 1. Context
 
-Calculation Path Trainer is a runnable product proof for Cambridge A-Level Chemistry-style structured calculations. It sits beside a separate planning repository, while this repository contains only the executable product slice and its verification evidence. The current implementation is intentionally narrow: one curated `KP_FROM_EQUILIBRIUM_MOLES` problem, one authored seven-step solution graph, and one deterministic diagnosis engine.
+Standard Trainer is a runnable product proof for Cambridge A-Level Chemistry-style structured calculations. It is now the first downstream consumer of Learning Foundry: the runtime loads two governed published components while retaining the original V0.1 and legacy V2 Kp assets as regression evidence. The published Kp component is explicitly a simplified migration with bounded happy-path compatibility.
 
 This is not a complete learning platform. It is evidence that the central calculation-path mechanism can be represented, evaluated, tested, and explained before broader product capabilities are funded.
 
@@ -20,7 +20,7 @@ The core proof therefore makes no model call. Structured fields remove interpret
 
 ## 4. Scope decision
 
-The slice contains exactly one problem topology. The learner enters total moles, two mole fractions, two partial pressures, a Kp expression, and a final result with units and significant figures. There are no generated questions, hints, learner model, authentication, agent orchestration, or general question parser.
+The slice contains two bounded target adapters: Kp from equilibrium amounts and stoichiometric product mass. Learner input remains structured, version-pinned evidence. There are no generated questions, learner model, authentication, agent orchestration, or general question parser.
 
 The system also makes no error-carried-forward claim. Once the first invalid step is found, subsequent steps are marked `NOT_EVALUATED`. That behavior prevents cascading duplicate diagnoses, but it does not decide whether downstream method marks should be awarded.
 
@@ -62,9 +62,9 @@ Browser-only persistence keeps deployment small and transparent. The cost is tha
 
 ## 10. Current limitations
 
-The project does not perform arbitrary chemistry reasoning, natural-language parsing, arbitrary expression parsing, question generation, hints, learner modelling, bounded or general ECF, or agentic workflow orchestration. It has no production authentication, remote database, analytics, or security control plane. The one curated problem does not establish transfer to another calculation topology or exam-board coverage.
+The project does not perform arbitrary chemistry reasoning, natural-language parsing, arbitrary expression parsing, question generation, learner modelling, bounded or general ECF, or agentic workflow orchestration. It has no production authentication, remote database, analytics, or security control plane. Two governed components do not establish broad exam-board coverage.
 
-The V2 typed-working adapter is explicitly a mock scenario selector, not NLP. The diagnosis engine supports only the exact canonical current gold definition and applies finite authored equation semantics rather than presenting its Kp-specific implementation as topology-generic or general algebra. The repository still contains no OCR, real parser, server endpoint, or model call, and the public live learner experience remains V0.1.
+The V2 typed-working adapter is explicitly a mock scenario selector, not NLP. Its Kp semantics remain finite and authored rather than topology-generic or general algebra. The separate Foundry Kp adapter does not claim full V2 semantic preservation: it proves bounded structured happy-path decision parity and declares the omitted capabilities in migration metadata. Published component identity is enforced through canonical schema validation, exact manifest/file mapping, content hash, capability profile, internal-reference validation, and the target adapter registry. The repository still contains no OCR, real parser, server endpoint, or model call.
 
 Accordingly, the evidence supports only this claim: for the frozen V0.1 path and the authored V2 gold evidence corpus, the deterministic engines identify the first relevant invalid stage and emit validated, versioned traces.
 
