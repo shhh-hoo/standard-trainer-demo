@@ -1,10 +1,10 @@
 # Demo
 
-1. Open the workbench and identify the single curated equilibrium problem.
-2. Enter the canonical structured path: `1 mol`, `0.4`, `0.6`, `200 kPa`, `300 kPa`, `p(NO2)^2/p(N2O4)`, and `450 kPa` to `3` significant figures.
-3. Submit and inspect the `VALID_PATH` trace and version metadata in the JSON export.
-4. Change the first mole fraction to `0.5` and submit again.
-5. Confirm that `moleFractionN2O4` is the first invalid step and every later step is `NOT_EVALUATED`.
-6. If storage is unavailable, confirm the current-tab-only warning and export the trace before leaving.
+1. Open the default component inspector and read the manifest for the single supported equilibrium problem.
+2. Select **Exact match**, **Partial match**, and **No match**. Confirm `INVOKE_COMPONENT`, `REQUIRE_INTERPRETER`, and `DO_NOT_INVOKE`; no temporary-support or gap-recording policy appears in the Trainer.
+3. In the separately labelled **Developer fixture runner**, select each authored scenario. Confirm that the result reports `COMPLETED`, keeps decision and failure code separate, and records component-owned `TYPED_WORKING_MOCK` provenance.
+4. Expand the evidence trace and inspect problem, graph, engine, tool, interpreter, and support-causality fields.
+5. Open `?view=legacy` for the frozen learner proof. Enter `1 mol`, `0.4`, `0.6`, `200 kPa`, `300 kPa`, `p(NO2)^2/p(N2O4)`, and `450 kPa` to `3` significant figures.
+6. Submit and inspect `VALID_PATH`; then change the first mole fraction to `0.5` and confirm that later steps remain `NOT_EVALUATED` after the first invalid step.
 
-The demo contains no LLM call, hint orchestration, generated question, free-text step parser, or ECF claim.
+The demo contains no Learning Foundry shell, registry, model call, OCR, hint orchestration, generated question, free-text parser, or ECF claim.

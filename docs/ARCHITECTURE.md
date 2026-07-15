@@ -2,30 +2,31 @@
 
 ## Release boundary
 
-The diagram below remains the frozen V0.1 live runtime. The separate `2.0.0-draft.2` V2 domain core now executes the modality-neutral contract without changing the learner UI. Its runtime boundary, recomputable equation evidence, recognition gate, strategy requirements, diagnosis policy, ordered revisions, and assistance provenance are described in [V2 Domain Core](V2_DOMAIN_CORE.md) and specified in [V2 Measurement Contract](V2_MEASUREMENT_CONTRACT.md).
+The frozen V0.1 runtime and the `2.0.0-draft.2` V2 domain core remain intact. A thin public component boundary now exposes the V2 core to a future Learning Foundry caller without implementing that caller. Its manifest, capability preflight, invocation, and result contracts are documented in [V2 Trainer Component Boundary](COMPONENT_BOUNDARY.md). Recomputable equation evidence, recognition gating, strategy requirements, diagnosis policy, ordered revisions, and assistance provenance remain owned by the [V2 Domain Core](V2_DOMAIN_CORE.md) and [V2 Measurement Contract](V2_MEASUREMENT_CONTRACT.md).
 
-## Current data flow
+## Current component flow
 
 ```mermaid
 flowchart TD
-    P["Curated ProblemDefinition<br/>problem, graph, and schema versions"]
-    S["Structured StudentStepInput<br/>seven authored fields"]
-    E["Calculation Path Engine<br/>pure canonical-order evaluation"]
-    T["Deterministic Tools<br/>numeric · curated expression · unit · significant figures"]
-    D["First-Invalid-Step Decision<br/>decision + failure code"]
-    V["Validated Evidence Trace<br/>versions · dependencies · step statuses"]
-    B["Browser Persistence<br/>PERSISTED or MEMORY_ONLY"]
-    J["JSON Export"]
-    N["Explicit boundary<br/>no LLM · no arbitrary parser · no ECF · no remote backend"]
+    R["Learning request descriptor"]
+    M["Component manifest"]
+    F["Capability preflight<br/>exact · partial · unsupported"]
+    I["Typed invocation envelope"]
+    A["Operational adapters<br/>normalized · legacy"]
+    E["V2 deterministic domain core"]
+    V["Structured result envelope<br/>validated evidence trace or issues"]
+    D["Developer fixture runner<br/>separate, not registry-discoverable"]
+    X["Future Foundry responsibilities<br/>routing · interpretation · gap handling"]
 
-    P --> E
-    S --> E
-    E --> T
-    T --> D
-    D --> V
-    V --> B
-    V --> J
-    N -. constrains .-> E
+    M --> F
+    R --> F
+    F -->|EXACT_MATCH| I
+    I --> A
+    A --> E
+    E --> V
+    D --> E
+    F -->|PARTIAL or UNSUPPORTED| V
+    X -. outside repository .-> R
 ```
 
 ## Implemented components
@@ -41,10 +42,17 @@ flowchart TD
 - Base deterministic outcomes remain separate from learner-facing hint-support overlays, so a supported stage can retain a tool `PASS`; the overlay and support outcome share one resolved decision revision.
 - A limited V1 structured adapter records the existing seven-field form as full-scaffold provenance without modifying the V0.1 runtime.
 - A four-scenario typed-working mock adapter provides deterministic normalized inputs for future UI work; it is not a parser.
+- A versioned public component manifest declares the single supported problem, two operational input envelopes, contract dependencies, deterministic outputs, explicit limitations, and separately labelled developer fixtures.
+- Capability preflight distinguishes exact, partial, and unsupported requests without invoking the domain engine or pretending missing interpretation exists.
+- Preflight reports deterministic match dimensions instead of a cross-component ranking score; fallback and gap policy remain outside the Trainer.
+- The runtime invocation boundary accepts unknown transport data, validates request/input agreement and context, fixes adapter-owned provenance, and fails closed before it calls the existing V2 public API.
+- The structured result envelope distinguishes interpreter-required from unsupported requests, includes the complete preflight resolution, and preserves V2 validation issue paths.
+- A developer-only fixture API powers the inspector without registering mock scenarios as operational learner inputs.
+- The default React surface is a minimal developer inspector. The frozen V0.1 workbench remains reachable with `?view=legacy`.
 
 ## Deferred components
 
-Natural-language parsing, OCR, arbitrary symbolic expressions, additional problem topologies, bounded ECF, hint delivery, learner modelling, generated questions, model calls, and agent orchestration are not present. No service, server endpoint, database, vector store, gateway, or authentication layer is implied by this diagram. The public live UI remains V0.1.
+Natural-language parsing, OCR, arbitrary symbolic expressions, additional problem topologies, bounded ECF, hint delivery, learner modelling, generated questions, model calls, and agent orchestration are not present. A Learning Foundry registry, chat shell, temporary support generator, capability-gap store, library, and schedule are also deferred. No service, server endpoint, database, vector store, gateway, or authentication layer is implied by this diagram.
 
 ## Trust boundary
 
