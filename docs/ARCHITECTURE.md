@@ -1,5 +1,9 @@
 # Architecture
 
+## Release boundary
+
+The diagram below remains the frozen V0.1 runtime. PR #5 adds the compile-time `2.0.0-draft.2` V2 measurement contract and gold artifacts only; it does not change this data flow. The future modality-neutral boundary, recomputable equation evidence, recognition gate, strategy requirements, diagnosis policy, ordered revisions, and assistance provenance are specified in [V2 Measurement Contract](V2_MEASUREMENT_CONTRACT.md).
+
 ## Current data flow
 
 ```mermaid
