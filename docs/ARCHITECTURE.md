@@ -43,3 +43,9 @@ flowchart TD
 ## Trust boundary
 
 All code runs in the browser. Registry validation detects malformed or mutated bundled artifacts, not supply-chain compromise or cryptographic identity. IDs, timestamps, and exported traces remain client-controlled. Production evidence would require authenticated server-side signing and storage outside this demo.
+
+## Dynamic localhost provider
+
+The browser runtime now composes `StaticBundledRegistryProvider` with an optional `LocalDemoRegistryProvider`. Local snapshots cross the same schema, content-hash, capability, expression and adapter checks as bundled content. The merged registry deduplicates exact id/version pairs and resolves an id to the highest compatible semantic version. Any local fetch or validation failure falls back to the static provider; GitHub Pages therefore remains unchanged.
+
+Recommended support is a post-diagnosis lookup from `firstPedagogicalError` into the selected component's governed `hintPolicy`. Embedded mode posts only typed runtime selection and diagnosis events to the configured parent origin. The legacy inspector is still routed independently.

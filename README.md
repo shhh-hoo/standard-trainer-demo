@@ -15,6 +15,14 @@ The runtime supports `KP` and `MASS` target adapters, structured learner evidenc
 
 The separately tested V2 component inspector from the previous release remains available with `?view=inspector`. It exposes the legacy Kp manifest, capability preflight, typed invocation envelope, developer fixtures, and structured result envelope; it is not the learner-facing published registry.
 
+## Local dynamic registry
+
+When `VITE_DEMO_REGISTRY_URL` is set by the Learning Foundry localhost launcher, Standard Trainer loads bundled components first and then fetches local snapshots. Every dynamic snapshot passes the existing canonical schema, content-hash, capability and adapter validation boundary. Valid id/version entries are merged, and each component id defaults to its highest compatible semantic version. Invalid dynamic content fails closed to the static registry.
+
+The runtime selects recommended support only after diagnosis: `selectSupportHint(component, trace)` uses `firstPedagogicalError` to choose a governed hint and never treats hint text as diagnosis. In the product story, v1.0.0 returns the original ratio hint while v1.1.0 returns the strengthened explicit 1:1 transfer.
+
+`?embedded=1` provides the clean Demo Shell surface and emits `RUNTIME_COMPONENT_SELECTED` and `RUNTIME_DIAGNOSIS_COMPLETED` to the configured parent origin. The legacy `?view=inspector` route is unchanged.
+
 ## Reliable core retained
 
 The frozen V0.1 calculation-path assets and tests remain in the repository. The legacy V2 deterministic domain core continues to run its full Kp gold and adversarial fixtures. The separate Foundry-published Kp adapter proves bounded structured happy-path decision parity only; its migration metadata explicitly records omitted V2 capabilities. Immutable Foundry snapshots provide publication identity at that new runtime boundary.
@@ -45,6 +53,6 @@ npm run build
 
 ## Explicit limitations
 
-This is a bounded static runtime, not a general Chemistry solver or LMS. It does not accept arbitrary generated components, arbitrary questions, free-form reasoning, handwriting, OCR, general symbolic algebra, or general ECF judgement. It has no server, authentication, database, or tamper-proof evidence store. The demo content hash detects snapshot mutation within this boundary; it is not a cryptographic identity or signature.
+This is a bounded runtime, not a general Chemistry solver or LMS. The online build is static; localhost may connect to Learning Foundry's in-memory demo registry. It does not accept arbitrary generated components, arbitrary questions, free-form reasoning, handwriting, OCR, general symbolic algebra, or general ECF judgement. It has no authentication, database, production registry or tamper-proof evidence store. The demo content hash detects snapshot mutation within this boundary; it is not a cryptographic identity or signature.
 
 See [Architecture](docs/ARCHITECTURE.md), [Demo](docs/DEMO.md), [V2 Domain Core](docs/V2_DOMAIN_CORE.md), [V2 Component Boundary](docs/COMPONENT_BOUNDARY.md), and [Foundry Integration](docs/FOUNDRY_INTEGRATION.md).

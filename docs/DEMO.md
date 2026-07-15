@@ -11,3 +11,6 @@
 
 The demo contains no LLM call, arbitrary parser, generated-content ingestion, general Chemistry support, or ECF claim.
 
+## Learning Foundry guided scene
+
+With `npm run demo:local` running from the sibling Learning Foundry repository, open Standard Trainer through Demo Shell scene 6. The runtime loads validated `stoichiometric-product-mass@1.1.0` from the local registry. Enter ratio `0.5` and diagnose: the deterministic result remains `FORMULA / WRONG_STOICHIOMETRIC_RATIO`, while Recommended support displays the strengthened 2:2 → 1:1 hint. `?embedded=1` emits runtime selection and diagnosis events; `?view=inspector` retains the legacy engineering surface.

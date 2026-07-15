@@ -86,3 +86,7 @@ Potential follow-on work should remain hypothesis-led rather than being assumed 
 6. Evaluate later constrained model-assisted parsing against the deterministic structured-input baseline, with explicit abstention and review behavior.
 
 These are candidates, not implemented capabilities. The present release remains a curated calculation-path core proof.
+
+## Local integration follow-up
+
+Learning Foundry now supplies the separate routing and governance shell described above. Standard Trainer remains bounded: its new localhost provider accepts only validated published snapshots and its support selector only reads governed hints after deterministic diagnosis. The local story proves v1.1.0 execution without expanding the engine into natural-language interpretation, general generation or an LLM runtime. Online builds continue to use the bundled registry.
