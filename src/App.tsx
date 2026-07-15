@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  evaluatePublishedAttempt,
+  runLearnerDiagnosis,
   LocalDemoRegistryProvider,
   MergedComponentRegistry,
   publishedComponentRegistry,
@@ -34,7 +34,8 @@ function emitRuntimeEvent(type: "RUNTIME_COMPONENT_SELECTED" | "RUNTIME_DIAGNOSI
 
 function initialComponent(): PublishedDiagnosticLearningComponent {
   const requested = new URLSearchParams(window.location.search).get("component");
-  return (requested ? publishedComponentRegistry.get(requested) : null) ?? publishedComponentRegistry.list()[0]!;
+  const requestedComponent = requested ? publishedComponentRegistry.get(requested) : null;
+  return (requestedComponent?.target.kind === "KP" ? null : requestedComponent) ?? publishedComponentRegistry.get("stoichiometric-product-mass")!;
 }
 
 export default function App() {
@@ -43,7 +44,7 @@ export default function App() {
   const [component, setComponent] = useState(initialComponent);
   const [draft, setDraft] = useState(() => defaults(initialComponent()));
   const [trace, setTrace] = useState<LearnerEvidenceTrace | null>(null);
-  const components = useMemo(() => registry?.list() ?? publishedComponentRegistry.list(), [registry]);
+  const components = useMemo(() => (registry?.list() ?? publishedComponentRegistry.list()).filter((item) => item.target.kind !== "KP"), [registry]);
   const source: RegistrySource = registry?.sourceOf(component.id, component.version) ?? "STATIC_BUNDLED_REGISTRY";
   const support = trace ? selectSupportHint(component, trace) : null;
 
@@ -54,7 +55,7 @@ export default function App() {
     loadMergedRegistry(providers).then((loaded) => {
       if (cancelled) return;
       setRegistry(loaded);
-      const selected = loaded.get(component.id) ?? loaded.list()[0]!;
+      const selected = loaded.get(component.id) ?? loaded.get("stoichiometric-product-mass")!;
       setComponent(selected); setDraft(defaults(selected)); setTrace(null);
       const selectedSource = loaded.sourceOf(selected.id, selected.version);
       setRegistryStatus(selectedSource === "LOCAL_DEMO_REGISTRY" ? "Validated local demo registry" : "Static bundled registry");
@@ -75,7 +76,7 @@ export default function App() {
     emitRuntimeEvent("RUNTIME_COMPONENT_SELECTED", { componentId: selected.id, version: selected.version, source: registry?.sourceOf(selected.id, selected.version) ?? "STATIC_BUNDLED_REGISTRY" });
   }
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const requiredNodes = component.reasoningGraph.acceptedStrategies[0]!.nodeRequirements.filter((item) => item.requirement === "REQUIRED").map((item) => item.nodeId);
     const attempt: NormalizedAttempt = {
@@ -86,15 +87,21 @@ export default function App() {
       ...(draft.arithmeticWorkingValue.trim() ? { arithmeticWorkingValue: Number(draft.arithmeticWorkingValue) } : {}),
       finalAnswer: { value: Number(draft.value), unit: draft.unit, significantFigures: Number(draft.significantFigures) },
     };
-    const result = evaluatePublishedAttempt(component, attempt, { traceId: `${attempt.attemptId}:trace`, submittedAt: new Date().toISOString() });
-    const nextTrace: LearnerEvidenceTrace = result.ok ? result.trace : { traceId: "rejected", attemptId: attempt.attemptId, componentId: component.id, componentVersion: component.version, componentContentHash: component.publication.contentHash, runtimeVersion: STANDARD_TRAINER_CAPABILITY.runtimeVersion, decision: "STUDENT_ERROR", failureCode: null, firstPedagogicalError: null, evidence: result.issues.map((issue) => `${issue.code}: ${issue.message}`), submittedAt: new Date().toISOString() };
+    const activeRegistry = registry ?? publishedComponentRegistry;
+    let nextTrace: LearnerEvidenceTrace;
+    try {
+      const result = await runLearnerDiagnosis({ componentId: component.id, componentVersion: component.version, attempt }, { registry: activeRegistry });
+      nextTrace = { traceId: result.traceId, attemptId: attempt.attemptId, componentId: result.componentId, componentVersion: result.componentVersion, componentContentHash: component.publication.contentHash, runtimeVersion: STANDARD_TRAINER_CAPABILITY.runtimeVersion, decision: result.diagnosis.decision, failureCode: result.diagnosis.failureCode, firstPedagogicalError: result.diagnosis.firstPedagogicalIssue, evidence: result.diagnosis.evidence, submittedAt: new Date().toISOString() };
+    } catch (error) {
+      nextTrace = { traceId: "rejected", attemptId: attempt.attemptId, componentId: component.id, componentVersion: component.version, componentContentHash: component.publication.contentHash, runtimeVersion: STANDARD_TRAINER_CAPABILITY.runtimeVersion, decision: "STUDENT_ERROR", failureCode: null, firstPedagogicalError: null, evidence: [error instanceof Error ? error.message : String(error)], submittedAt: new Date().toISOString() };
+    }
     setTrace(nextTrace);
     emitRuntimeEvent("RUNTIME_DIAGNOSIS_COMPLETED", { componentId: component.id, version: component.version, decision: nextTrace.decision, failureCode: nextTrace.failureCode, firstPedagogicalError: nextTrace.firstPedagogicalError, supportHint: selectSupportHint(component, nextTrace)?.text ?? null });
   }
 
   return <main className={embedded ? "embedded-runtime" : ""}>
     <a className="skip-link" href="#attempt-heading">Skip to learner evidence</a>
-    <header className="runtime-header"><div><p className="eyebrow">Standard Trainer · Downstream runtime</p><h1>Deterministic diagnosis from <em>published reasoning contracts.</em></h1><p>Choose a Foundry-published component, submit structured learner evidence, and stop at the first pedagogical error.</p></div><aside><span>Registry</span><strong>{registryStatus}</strong><small>{STANDARD_TRAINER_CAPABILITY.runtimeId}@{STANDARD_TRAINER_CAPABILITY.runtimeVersion}</small><small>KP + MASS adapters · No LLM call</small></aside></header>
+    <header className="runtime-header"><div><p className="eyebrow">Standard Trainer · Downstream runtime</p><h1>Deterministic diagnosis from <em>published reasoning contracts.</em></h1><p>Choose a Foundry-published component, submit structured learner evidence, and stop at the first pedagogical error.</p></div><aside><span>Registry</span><strong>{registryStatus}</strong><small>{STANDARD_TRAINER_CAPABILITY.runtimeId}@{STANDARD_TRAINER_CAPABILITY.runtimeVersion}</small><small>MASS learner adapter · deterministic runtime</small></aside></header>
     <section className="component-selector" aria-labelledby="selector-heading"><div><p className="panel-label">Published component registry</p><h2 id="selector-heading">Select diagnostic component</h2></div><div className="component-options">{components.map((item) => <button key={item.id} className={item.id === component.id ? "selected" : ""} onClick={() => selectComponent(item.id)}><span>{item.target.kind}</span><strong>{item.presentation.title}</strong><small>{item.curriculum.topic} · v{item.version}</small></button>)}</div></section>
     <div className="runtime-grid">
       <aside className="contract-panel"><p className="panel-label">Immutable contract</p><h2>{component.presentation.reaction ?? component.presentation.title}</h2><p>{component.presentation.prompt}</p><dl>{component.authoredFacts.map((fact) => <div key={fact.id}><dt>{fact.label}</dt><dd>{fact.value} {fact.unit}</dd></div>)}</dl><div className="contract-meta"><span>Version</span><strong>{component.version}</strong><span>Registry source</span><strong>{source === "LOCAL_DEMO_REGISTRY" ? "Local demo registry" : "Static bundled registry"}</strong><span>Hash</span><code>{component.publication.contentHash}</code></div><p className="source-note">Generated from learning-foundry-demo. This runtime cannot edit component definitions.</p></aside>

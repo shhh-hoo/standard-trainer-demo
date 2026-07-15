@@ -14,7 +14,7 @@ export class StaticBundledRegistryProvider implements ComponentRegistryProvider 
   async load(): Promise<readonly PublishedDiagnosticLearningComponent[]> { return publishedComponentRegistry.list(); }
 }
 
-type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 
 export class LocalDemoRegistryProvider implements ComponentRegistryProvider {
   readonly source = "LOCAL_DEMO_REGISTRY" as const;

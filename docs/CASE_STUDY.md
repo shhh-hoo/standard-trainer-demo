@@ -32,7 +32,7 @@ The first failed tool determines the trace-level failure code and first-invalid-
 
 Dependencies are explicit evidence in the graph, but the current evaluator does not perform dynamic graph scheduling. It follows `orderedStepIds`, whose consistency and dependency order are protected by tests.
 
-## 6. Evaluation model
+## 6. Learner Diagnosis model
 
 Decisions and failure codes are intentionally separate. `VALID_PATH` has no failure code. `INCOMPLETE_PATH` pairs with `MISSING_STEP`. Other deterministic mismatches produce `INVALID_PATH` with `NUMERIC_MISMATCH`, `EXPRESSION_MISMATCH`, `UNIT_MISMATCH`, or `SIGNIFICANT_FIGURES_MISMATCH`.
 

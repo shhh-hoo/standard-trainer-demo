@@ -16,7 +16,7 @@
 
 The expression tool is a versioned whitelist matcher for this curated problem. It is not a symbolic algebra system or an arbitrary expression parser.
 
-## Evaluation
+## Learner Diagnosis
 
 The engine visits the canonical order once. Within a step, checks run in this order:
 
