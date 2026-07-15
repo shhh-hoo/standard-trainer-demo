@@ -68,14 +68,20 @@ The V2 typed-working adapter is explicitly a mock scenario selector, not NLP. Th
 
 Accordingly, the evidence supports only this claim: for the frozen V0.1 path and the authored V2 gold evidence corpus, the deterministic engines identify the first relevant invalid stage and emit validated, versioned traces.
 
-## 11. Next validated experiments
+## 11. Component boundary
+
+The deterministic V2 runtime is now packaged as a bounded Learning Foundry trainer component rather than expanded into a standalone learning product. Its public manifest states exact subject and problem coverage. Capability preflight distinguishes exact requests from requests that still need an interpreter and requests that do not fit at all. Typed invocation and result envelopes preserve the existing V2 validation and provenance rules instead of weakening them for UI convenience.
+
+The accompanying developer inspector demonstrates those boundaries and four explicit mock outcomes. It is not a learner workflow. Routing, OCR, natural-language interpretation, confirmation, temporary support, capability-gap persistence, library, schedule, and cross-component orchestration remain responsibilities of a later Foundry shell.
+
+## 12. Next validated experiments
 
 Potential follow-on work should remain hypothesis-led rather than being assumed as product scope:
 
-1. Connect a future PR #7 learner interface only to the V2 public API and explicit typed mock scenarios, without implying free-text parsing.
-2. Author a second calculation topology and test whether the graph and tool contracts generalize without engine-specific exceptions.
-3. Specify a bounded, human-reviewed ECF policy and evaluate marking agreement separately from path diagnosis.
-4. Enrich the authored problem schema only where a second topology demonstrates a concrete need.
+1. Build a separate Learning Foundry shell that routes a learner request through manifest lookup and capability preflight before showing any component experience.
+2. Add explicit interpreter and learner-confirmation contracts without treating raw handwriting or free text as normalized evidence.
+3. Author a second calculation topology and test whether the graph and tool contracts generalize without engine-specific exceptions.
+4. Specify a bounded, human-reviewed ECF policy and evaluate marking agreement separately from path diagnosis.
 5. Define a human-reviewed hint contract tied to evidence codes, then test whether it supports repair without revealing the complete method.
 6. Evaluate later constrained model-assisted parsing against the deterministic structured-input baseline, with explicit abstention and review behavior.
 
