@@ -63,7 +63,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 50 tests: 15 for the frozen V0.1 runtime, 15 contract-integrity checks for the V2 gold artifacts, and 20 runtime/core/adapter checks for the deterministic V2 implementation. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2), and the V2 contract baseline was merged in [PR #5](https://github.com/shhh-hoo/standard-trainer-demo/pull/5).
+The current suite contains 63 tests: 15 for the frozen V0.1 runtime, 15 contract-integrity checks for the V2 gold artifacts, and 33 runtime/core/adapter/adversarial checks for the deterministic V2 implementation. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2), and the V2 contract baseline was merged in [PR #5](https://github.com/shhh-hoo/standard-trainer-demo/pull/5).
 
 ## Demo walkthrough
 

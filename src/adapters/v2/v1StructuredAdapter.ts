@@ -6,7 +6,10 @@ export type V1StructuredAdapterResult =
   | { readonly ok: true; readonly attempt: NormalizedAttempt }
   | {
       readonly ok: false;
-      readonly code: "UNSUPPORTED_PROBLEM" | "UNSUPPORTED_EXPRESSION";
+      readonly code:
+        | "UNSUPPORTED_PROBLEM"
+        | "UNSUPPORTED_EXPRESSION"
+        | "INVALID_SUBMISSION_TIMESTAMP";
       readonly message: string;
     };
 
@@ -121,6 +124,19 @@ export function adaptV1SubmissionToV2(
   problem: ProblemDefinition,
   submission: CalculationPathSubmission,
 ): V1StructuredAdapterResult {
+  const submittedAtMillis = Date.parse(submission.submittedAt);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(
+      submission.submittedAt,
+    ) ||
+    !Number.isFinite(submittedAtMillis)
+  ) {
+    return {
+      ok: false,
+      code: "INVALID_SUBMISSION_TIMESTAMP",
+      message: "The V1 submission timestamp must be a valid ISO-8601 UTC timestamp.",
+    };
+  }
   if (problem.id !== "KP_FROM_EQUILIBRIUM_MOLES") {
     return {
       ok: false,
@@ -289,7 +305,7 @@ export function adaptV1SubmissionToV2(
   const firstEvidenceStepId = steps[0]?.id;
   const targetEvidenceStepId = steps.find(({ id }) => id === "kpExpression")?.id ??
     steps.find(({ id }) => id === "kpResult")?.id;
-  const eventTimestamp = new Date(Date.parse(submission.submittedAt) - 1_000).toISOString();
+  const eventTimestamp = new Date(submittedAtMillis - 1_000).toISOString();
   const attempt: NormalizedAttempt = {
     schemaVersion: V2_CONTRACT_VERSION,
     attemptId: submission.attemptId,

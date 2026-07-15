@@ -36,7 +36,9 @@ flowchart TD
 - Runtime validation checks trace shape and internal agreement between step evaluations, decision, failure code, and first invalid step.
 - The React workbench collects structured fields and presents evidence without owning evaluation rules.
 - The archive uses one browser storage key and preserves an exportable current-tab trace when storage is unavailable.
-- The V2 public API validates unknown problems/attempts, applies recognition gating, aligns normalized evidence, evaluates structured ASTs, runs versioned deterministic checks, selects the first pedagogical error, derives causally linked support outcomes, and validates the emitted trace.
+- The V2 public API shape-validates unknown problems/attempts, explicitly rejects definitions outside the one supported gold authority, applies recognition gating, aligns independent versus solution evidence, semantically validates embedded formula ASTs, runs versioned deterministic checks, selects the first pedagogical error, derives causally linked support outcomes, and validates the emitted trace.
+- Revision sequence and revision `stepIds` are the sole temporal authority; `attempt.steps` array order and display symbols do not control diagnosis.
+- Base deterministic outcomes remain separate from learner-facing hint-support overlays, so a supported stage can retain a tool `PASS`.
 - A limited V1 structured adapter records the existing seven-field form as full-scaffold provenance without modifying the V0.1 runtime.
 - A four-scenario typed-working mock adapter provides deterministic normalized inputs for future UI work; it is not a parser.
 
@@ -46,4 +48,4 @@ Natural-language parsing, OCR, arbitrary symbolic expressions, additional proble
 
 ## Trust boundary
 
-The complete V0.1 runtime is client-side. Problem and engine versions are compiled into the static bundle, but the browser, `localStorage`, timestamps, learner inputs, and downloaded JSON are user-controlled. The V2 domain does not create timestamps or IDs; its caller supplies them explicitly. Runtime validation detects malformed or internally inconsistent structures; it does not establish identity, prevent tampering, or provide cryptographic provenance. Any future production evidence claim would require a separately designed authenticated server-side boundary.
+The complete V0.1 runtime is client-side. Problem and engine versions are compiled into the static bundle, but the browser, `localStorage`, timestamps, learner inputs, and downloaded JSON are user-controlled. The V2 domain does not create timestamps or IDs; its caller supplies them explicitly and validators require valid ISO timestamps. Runtime validation detects malformed or internally inconsistent structures; it does not establish identity, prevent tampering, or provide cryptographic provenance. Any future production evidence claim would require a separately designed authenticated server-side boundary.

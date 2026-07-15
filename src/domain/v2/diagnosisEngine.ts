@@ -1,6 +1,8 @@
 import { runDeterministicChecks } from "./deterministicChecks";
+import { latestRevision, latestStepMatching, revisionForStep } from "./attemptOrder";
 import { aggregateRecognitionGate } from "./recognitionGate";
 import { alignReasoningEvidence } from "./reasoningAlignment";
+import { validateSupportedDiagnosticProblem } from "./supportedProblem";
 import {
   validateDiagnosticEvidenceTraceV2,
   validateDiagnosticProblemDefinitionV2,
@@ -36,16 +38,17 @@ function supportOutcome(
   recognitionPassed: boolean,
 ): AttemptSupportOutcome {
   if (!recognitionPassed) return "INSUFFICIENT_EVIDENCE";
-  const resultStep = [...attempt.steps]
-    .reverse()
-    .find(
-      (step) =>
-        step.calculation?.target.source === "REASONING_QUANTITY" &&
-        step.calculation.target.reasoningNodeId === "calculate-result",
-    );
+  const resultStep = latestStepMatching(
+    attempt,
+    (step) =>
+      step.calculation?.target.source === "REASONING_QUANTITY" &&
+      step.calculation.target.reasoningNodeId === "calculate-result",
+  );
   const causalRevision = resultStep
-    ? attempt.revisions.find((revision) => revision.stepIds.includes(resultStep.id))
-    : undefined;
+    ? revisionForStep(attempt, resultStep.id)
+    : solved
+      ? null
+      : latestRevision(attempt);
   const causalEvents = causalRevision
     ? attempt.assistanceEvents.filter((event) =>
         causalRevision.precededByAssistanceEventIds.includes(event.id),
@@ -98,33 +101,45 @@ export function diagnoseNormalizedAttempt(
   if (!problemValidation.ok) {
     return { ok: false, kind: "INVALID_PROBLEM", issues: problemValidation.issues };
   }
-  const attemptValidation = validateNormalizedAttempt(attempt, problemValidation.value);
+  const supportedProblem = validateSupportedDiagnosticProblem(problemValidation.value);
+  if (!supportedProblem.ok) {
+    return { ok: false, kind: "INVALID_PROBLEM", issues: supportedProblem.issues };
+  }
+  const attemptValidation = validateNormalizedAttempt(attempt, supportedProblem.value);
   if (!attemptValidation.ok) {
     return { ok: false, kind: "INVALID_ATTEMPT", issues: attemptValidation.issues };
   }
 
   try {
     const normalized = attemptValidation.value;
-    const recognitionGate = aggregateRecognitionGate(problemValidation.value, normalized);
+    const recognitionGate = aggregateRecognitionGate(supportedProblem.value, normalized);
     let alignmentEvidence: DiagnosticEvidenceTraceV2["alignmentEvidence"] = [];
     let deterministicChecks: DiagnosticEvidenceTraceV2["deterministicChecks"] = [];
     let stageEvaluations: DiagnosticEvidenceTraceV2["stageEvaluations"];
+    let selectedStrategyId: string | null = null;
 
     if (recognitionGate.decision !== "PASSED") {
       stageEvaluations = gatedStages(recognitionGate);
     } else {
-      const alignment = alignReasoningEvidence(problemValidation.value, normalized);
-      const checks = runDeterministicChecks(problemValidation.value, normalized, alignment);
+      const alignment = alignReasoningEvidence(supportedProblem.value, normalized);
+      const checks = runDeterministicChecks(supportedProblem.value, normalized, alignment);
       alignmentEvidence = alignment.evidence;
       deterministicChecks = checks.deterministicChecks;
       stageEvaluations = checks.stageEvaluations;
+      selectedStrategyId = checks.selectedStrategyId;
     }
 
     const firstIncorrect = stageEvaluations.find(({ status }) => status === "INCORRECT");
     const solved =
       recognitionGate.decision === "PASSED" &&
       !firstIncorrect &&
-      stageEvaluations.find(({ category }) => category === "SUBSTITUTION")?.status === "CORRECT" &&
+      selectedStrategyId !== null &&
+      ["CORRECT", "SUPPORTED_BY_HINT"].includes(
+        stageEvaluations.find(({ category }) => category === "FORMULA")?.status ?? "",
+      ) &&
+      ["CORRECT", "SUPPORTED_BY_HINT"].includes(
+        stageEvaluations.find(({ category }) => category === "SUBSTITUTION")?.status ?? "",
+      ) &&
       stageEvaluations.find(({ category }) => category === "ARITHMETIC")?.status === "CORRECT" &&
       stageEvaluations.find(({ category }) => category === "UNIT")?.status === "CORRECT" &&
       stageEvaluations.find(({ category }) => category === "PRECISION")?.status === "CORRECT";
@@ -138,10 +153,10 @@ export function diagnoseNormalizedAttempt(
         ? "RECOGNITION_UNCERTAIN"
         : solved
           ? "SOLVED"
+          : attemptSupportOutcome === "NOT_SOLVED_AFTER_FULL_SCAFFOLD"
+            ? "NOT_SOLVED"
           : firstIncorrect
-            ? attemptSupportOutcome === "NOT_SOLVED_AFTER_FULL_SCAFFOLD"
-              ? "NOT_SOLVED"
-              : "STUDENT_ERROR"
+            ? "STUDENT_ERROR"
             : "INCOMPLETE_EVIDENCE";
 
     const trace: DiagnosticEvidenceTraceV2 = {
@@ -168,7 +183,7 @@ export function diagnoseNormalizedAttempt(
       attemptSupportOutcome,
       submittedAt: context.submittedAt,
     };
-    const traceValidation = validateDiagnosticEvidenceTraceV2(trace, problemValidation.value);
+    const traceValidation = validateDiagnosticEvidenceTraceV2(trace, supportedProblem.value);
     return traceValidation.ok
       ? { ok: true, trace: traceValidation.value }
       : {

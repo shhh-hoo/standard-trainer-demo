@@ -6,6 +6,7 @@ import type {
   RecognitionGateDecision,
   RecognitionIssue,
 } from "./types";
+import { orderedSteps } from "./attemptOrder";
 
 export interface RecognitionGateResult {
   readonly decision: RecognitionGateDecision;
@@ -56,11 +57,12 @@ export function aggregateRecognitionGate(
   _problem: DiagnosticProblemDefinitionV2,
   attempt: NormalizedAttempt,
 ): RecognitionGateResult {
-  const abstained = attempt.steps.some(({ recognition }) => recognition.status === "ABSTAINED") ||
+  const attemptSteps = orderedSteps(attempt);
+  const abstained = attemptSteps.some(({ recognition }) => recognition.status === "ABSTAINED") ||
     attempt.recognitionIssues.some(
       (issue) => issue.scope !== "STEP" && issue.recognition.status === "ABSTAINED",
     );
-  const requiresConfirmation = attempt.steps.some(
+  const requiresConfirmation = attemptSteps.some(
     ({ recognition }) => recognition.status === "REQUIRES_CONFIRMATION",
   ) ||
     attempt.recognitionIssues.some(
@@ -72,14 +74,14 @@ export function aggregateRecognitionGate(
     if (issue.scope === "STEP") {
       affected.add(issue.stepId);
     } else if (issue.scope === "ARTIFACT") {
-      attempt.steps
+      attemptSteps
         .filter((step) => step.source.artifactId === issue.artifactId)
         .forEach((step) => affected.add(step.id));
     } else {
-      attempt.steps.filter((step) => sourceMatches(step, issue)).forEach((step) => affected.add(step.id));
+      attemptSteps.filter((step) => sourceMatches(step, issue)).forEach((step) => affected.add(step.id));
     }
   }
-  for (const step of attempt.steps) {
+  for (const step of attemptSteps) {
     if (
       step.recognition.status === "ABSTAINED" ||
       step.recognition.status === "REQUIRES_CONFIRMATION"
@@ -88,7 +90,7 @@ export function aggregateRecognitionGate(
     }
   }
 
-  const affectedSteps = attempt.steps.filter((step) => affected.has(step.id));
+  const affectedSteps = attemptSteps.filter((step) => affected.has(step.id));
   const categorySet = new Set(affectedSteps.flatMap(categoriesForStep));
   const order: readonly DiagnosisCategory[] = [
     "DATA_EXTRACTION",

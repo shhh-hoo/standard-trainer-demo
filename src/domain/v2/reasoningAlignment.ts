@@ -1,5 +1,11 @@
-import { collectVariableReferences } from "./expressionEvaluator";
+import {
+  collectVariableReferences,
+  compareFormulaAst,
+  type FormulaComparison,
+} from "./expressionEvaluator";
+import { orderedSteps } from "./attemptOrder";
 import type {
+  DiagnosisCategory,
   DiagnosticProblemDefinitionV2,
   ExpressionAst,
   NormalizedAttempt,
@@ -20,6 +26,47 @@ export interface ReasoningAlignmentResult {
   readonly evidence: readonly ReasoningAlignmentEvidence[];
   readonly strategyMatches: readonly StrategyMatchResult[];
 }
+
+export function independentEvidenceStepIds(
+  problem: DiagnosticProblemDefinitionV2,
+  alignment: ReasoningAlignmentResult,
+  category: DiagnosisCategory,
+): readonly string[] {
+  return [
+    ...new Set(
+      alignment.evidence
+        .filter(
+          (item) =>
+            item.evidenceKind !== "INFERRED" &&
+            item.reasoningNodeIds.some((nodeId) => {
+              const node = problem.reasoningGraph.nodes[nodeId];
+              return (
+                node?.category === category &&
+                node.independentStageEvidenceKinds.includes(item.evidenceKind)
+              );
+            }),
+        )
+        .map(({ normalizedStepId }) => normalizedStepId),
+    ),
+  ];
+}
+
+export interface CompressedCalculationAnalysis {
+  readonly dependenciesComplete: boolean;
+  readonly formulaComparison: FormulaComparison;
+  readonly evidenceNodeIds: readonly string[];
+}
+
+const compressedSpecies = Object.freeze({
+  "equilibrium-moles-no2": {
+    reasoningNodeId: "partial-pressure-no2",
+    symbol: "p_NO2",
+  },
+  "equilibrium-moles-n2o4": {
+    reasoningNodeId: "partial-pressure-n2o4",
+    symbol: "p_N2O4",
+  },
+} as const);
 
 function variableFactId(expression: ExpressionAst): string | null {
   return expression.kind === "VARIABLE" && expression.reference.source === "AUTHORED_FACT"
@@ -67,32 +114,29 @@ function partialPressureFact(
   return null;
 }
 
-export function isCompleteCompressedCalculation(
+export function analyzeCompressedCalculation(
   problem: DiagnosticProblemDefinitionV2,
   expression: ExpressionAst,
-): boolean {
-  const moleFacts = problem.authoredFacts.filter(
-    (fact) => fact.relevance === "REQUIRED" && fact.unit === "mol" && typeof fact.value === "number",
-  );
-  const pressureFact = problem.authoredFacts.find(
-    (fact) =>
-      fact.relevance === "REQUIRED" &&
-      problem.target.acceptedUnits.includes(fact.unit ?? "") &&
-      typeof fact.value === "number",
-  );
-  if (moleFacts.length !== 2 || !pressureFact) return false;
-  if (expression.kind !== "BINARY" || expression.operator !== "DIVIDE") return false;
-  if (
-    expression.left.kind !== "BINARY" ||
-    expression.left.operator !== "POWER" ||
-    expression.left.right.kind !== "NUMBER" ||
-    expression.left.right.value !== 2
-  ) {
-    return false;
-  }
-  const moleFactIds = new Set(moleFacts.map(({ id }) => id));
+): CompressedCalculationAnalysis {
+  const no2Fact = problem.authoredFacts.find(({ id }) => id === "equilibrium-moles-no2");
+  const n2o4Fact = problem.authoredFacts.find(({ id }) => id === "equilibrium-moles-n2o4");
+  const pressureFact = problem.authoredFacts.find(({ id }) => id === "total-pressure");
+  const incomplete: CompressedCalculationAnalysis = {
+    dependenciesComplete: false,
+    formulaComparison: "NOT_EQUIVALENT",
+    evidenceNodeIds: [],
+  };
+  if (!no2Fact || !n2o4Fact || !pressureFact) return incomplete;
+  if (expression.kind !== "BINARY" || expression.operator !== "DIVIDE") return incomplete;
+  const poweredNumerator =
+    expression.left.kind === "BINARY" && expression.left.operator === "POWER"
+      ? expression.left
+      : null;
+  const numeratorPartialPressure = poweredNumerator?.left ?? expression.left;
+  const exponent = poweredNumerator?.right;
+  const moleFactIds = new Set([no2Fact.id, n2o4Fact.id]);
   const numeratorSpecies = partialPressureFact(
-    expression.left.left,
+    numeratorPartialPressure,
     moleFactIds,
     pressureFact.id,
   );
@@ -101,11 +145,94 @@ export function isCompleteCompressedCalculation(
     moleFactIds,
     pressureFact.id,
   );
-  return (
+  const dependenciesComplete =
     numeratorSpecies !== null &&
     denominatorSpecies !== null &&
-    numeratorSpecies !== denominatorSpecies
-  );
+    numeratorSpecies !== denominatorSpecies;
+  if (!dependenciesComplete) return incomplete;
+
+  const numeratorDefinition = compressedSpecies[numeratorSpecies as keyof typeof compressedSpecies];
+  const denominatorDefinition =
+    compressedSpecies[denominatorSpecies as keyof typeof compressedSpecies];
+  if (!numeratorDefinition || !denominatorDefinition) return incomplete;
+  const observedFormula: ExpressionAst = {
+    kind: "BINARY",
+    operator: "DIVIDE",
+    left: exponent
+      ? {
+          kind: "BINARY",
+          operator: "POWER",
+          left: {
+            kind: "VARIABLE",
+            reference: {
+              source: "REASONING_QUANTITY",
+              symbol: numeratorDefinition.symbol,
+              reasoningNodeId: numeratorDefinition.reasoningNodeId,
+            },
+          },
+          right: exponent,
+        }
+      : {
+          kind: "VARIABLE",
+          reference: {
+            source: "REASONING_QUANTITY",
+            symbol: numeratorDefinition.symbol,
+            reasoningNodeId: numeratorDefinition.reasoningNodeId,
+          },
+        },
+    right: {
+      kind: "VARIABLE",
+      reference: {
+        source: "REASONING_QUANTITY",
+        symbol: denominatorDefinition.symbol,
+        reasoningNodeId: denominatorDefinition.reasoningNodeId,
+      },
+    },
+  };
+  const authoredFormula = problem.formulaDefinitions.find(
+    ({ id }) => id === "formula-kp-no2-n2o4",
+  )?.expression;
+  let formulaComparison: FormulaComparison = authoredFormula
+    ? compareFormulaAst(observedFormula, authoredFormula)
+    : "NOT_EQUIVALENT";
+  if (
+    numeratorSpecies === "equilibrium-moles-n2o4" &&
+    denominatorSpecies === "equilibrium-moles-no2" &&
+    exponent?.kind === "NUMBER" &&
+    exponent.value === 2
+  ) {
+    formulaComparison = "WRONG_STOICHIOMETRIC_POWER";
+  }
+  const dependencyNodes = [
+    "identify-kp-target",
+    "choose-partial-pressure-strategy",
+    "total-moles",
+    "mole-fraction-n2o4",
+    "mole-fraction-no2",
+    "partial-pressure-n2o4",
+    "partial-pressure-no2",
+  ];
+  return {
+    dependenciesComplete,
+    formulaComparison,
+    evidenceNodeIds:
+      formulaComparison === "EQUIVALENT"
+        ? [
+            ...dependencyNodes,
+            "construct-kp-expression",
+            "substitute-values",
+            "calculate-result",
+          ]
+        : dependencyNodes,
+  };
+}
+
+export function isCompleteCompressedCalculation(
+  problem: DiagnosticProblemDefinitionV2,
+  expression: ExpressionAst,
+): boolean {
+  const analysis = analyzeCompressedCalculation(problem, expression);
+  return analysis.dependenciesComplete && analysis.formulaComparison === "EQUIVALENT";
 }
 
 function explicitNodeEvidence(step: NormalizedStep): readonly [string, ReasoningEvidenceKind][] {
@@ -150,6 +277,8 @@ export function alignReasoningEvidence(
   attempt: NormalizedAttempt,
 ): ReasoningAlignmentResult {
   const evidence: ReasoningAlignmentEvidence[] = [];
+  const attemptSteps = orderedSteps(attempt);
+  const stepById = new Map(attemptSteps.map((step) => [step.id, step]));
   const add = (stepId: string, nodeId: string, evidenceKind: ReasoningEvidenceKind) => {
     if (!problem.reasoningGraph.nodes[nodeId]) return;
     evidence.push({
@@ -164,25 +293,29 @@ export function alignReasoningEvidence(
     factUse.evidenceStepIds.forEach((stepId) => add(stepId, "select-relevant-data", "FACT_USE"));
   }
   if (attempt.target) {
-    attempt.target.evidenceStepIds.forEach((stepId) =>
-      add(stepId, "identify-kp-target", attempt.target?.explicit ? "TARGET_STATEMENT" : "INFERRED"),
-    );
-  }
-  for (const step of attempt.steps) {
-    explicitNodeEvidence(step).forEach(([nodeId, kind]) => add(step.id, nodeId, kind));
-    if (step.calculation && isCompleteCompressedCalculation(problem, step.calculation.expression)) {
-      for (const nodeId of [
+    attempt.target.evidenceStepIds.forEach((stepId) => {
+      const step = stepById.get(stepId);
+      const independentlyObservable = Boolean(
+        step &&
+          (step.semanticType === "TARGET_IDENTIFICATION" ||
+            step.semanticType === "STRATEGY" ||
+            step.formulaAst ||
+            step.calculation),
+      );
+      add(
+        stepId,
         "identify-kp-target",
-        "choose-partial-pressure-strategy",
-        "total-moles",
-        "mole-fraction-n2o4",
-        "mole-fraction-no2",
-        "partial-pressure-n2o4",
-        "partial-pressure-no2",
-        "construct-kp-expression",
-        "substitute-values",
-        "calculate-result",
-      ]) {
+        attempt.target?.explicit && independentlyObservable
+          ? "TARGET_STATEMENT"
+          : "INFERRED",
+      );
+    });
+  }
+  for (const step of attemptSteps) {
+    explicitNodeEvidence(step).forEach(([nodeId, kind]) => add(step.id, nodeId, kind));
+    if (step.calculation) {
+      const compressed = analyzeCompressedCalculation(problem, step.calculation.expression);
+      for (const nodeId of compressed.evidenceNodeIds) {
         add(step.id, nodeId, "EMBEDDED_CALCULATION");
       }
     }

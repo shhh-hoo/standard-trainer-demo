@@ -3,7 +3,12 @@ import {
   evaluateExpression,
   type FormulaComparison,
 } from "./expressionEvaluator";
-import { isCompleteCompressedCalculation } from "./reasoningAlignment";
+import {
+  analyzeCompressedCalculation,
+  independentEvidenceStepIds,
+  isCompleteCompressedCalculation,
+} from "./reasoningAlignment";
+import { latestStepMatching, orderedRevisions, orderedSteps } from "./attemptOrder";
 import type { ReasoningAlignmentResult } from "./reasoningAlignment";
 import type {
   DeterministicCheckEvidence,
@@ -93,19 +98,11 @@ function referencesPriorPartialPressures(
 }
 
 function latestResultStep(attempt: NormalizedAttempt): NormalizedStep | null {
-  const orderedIds = [...attempt.revisions]
-    .sort((left, right) => left.sequence - right.sequence)
-    .flatMap(({ stepIds }) => stepIds);
-  const byId = new Map(attempt.steps.map((step) => [step.id, step]));
-  return (
-    [...orderedIds]
-      .reverse()
-      .map((id) => byId.get(id))
-      .find(
-        (step) =>
-          step?.calculation?.target.source === "REASONING_QUANTITY" &&
-          step.calculation.target.reasoningNodeId === "calculate-result",
-      ) ?? null
+  return latestStepMatching(
+    attempt,
+    (step) =>
+      step.calculation?.target.source === "REASONING_QUANTITY" &&
+      step.calculation.target.reasoningNodeId === "calculate-result",
   );
 }
 
@@ -113,15 +110,10 @@ function firstEquationMismatch(
   problem: DiagnosticProblemDefinitionV2,
   attempt: NormalizedAttempt,
 ): string | null {
-  const orderedIds = [...attempt.revisions]
-    .sort((left, right) => left.sequence - right.sequence)
-    .flatMap(({ stepIds }) => stepIds);
-  const stepById = new Map(attempt.steps.map((step) => [step.id, step]));
+  const attemptSteps = orderedSteps(attempt);
   const declared = new Map<string, number>();
   const prior = new Set<string>();
-  for (const stepId of orderedIds) {
-    const step = stepById.get(stepId);
-    if (!step) continue;
+  for (const step of attemptSteps) {
     if (step.calculation?.declaredResult) {
       const recomputed = evaluateExpression(step.calculation.expression, {
         problem,
@@ -145,22 +137,34 @@ function firstEquationMismatch(
 function linkedHintStepIds(
   problem: DiagnosticProblemDefinitionV2,
   attempt: NormalizedAttempt,
-  category: DiagnosisCategory,
+  baseEvaluation: ExpectedStageEvaluation,
 ): readonly string[] {
-  const relevantEventIds = new Set(
-    attempt.assistanceEvents
-      .filter((event) =>
+  const eventById = new Map(attempt.assistanceEvents.map((event) => [event.id, event]));
+  for (const revision of orderedRevisions(attempt)) {
+    for (const eventId of revision.precededByAssistanceEventIds) {
+      const event = eventById.get(eventId);
+      if (!event) continue;
+      const relevant =
+        event.stage === baseEvaluation.category ||
         event.revealedReasoningNodeIds.some(
-          (nodeId) => problem.reasoningGraph.nodes[nodeId]?.category === category,
-        ),
-      )
-      .map(({ id }) => id),
-  );
-  return attempt.revisions
-    .filter((revision) =>
-      revision.precededByAssistanceEventIds.some((id) => relevantEventIds.has(id)),
-    )
-    .flatMap(({ stepIds }) => stepIds);
+          (nodeId) =>
+            problem.reasoningGraph.nodes[nodeId]?.category === baseEvaluation.category,
+        );
+      if (!relevant) continue;
+      const evidencedStepIds = revision.stepIds.filter((stepId) =>
+        baseEvaluation.evidenceStepIds.includes(stepId),
+      );
+      if (evidencedStepIds.length > 0) return evidencedStepIds;
+      if (
+        baseEvaluation.status === "NOT_OBSERVED" &&
+        event.revealedReasoningNodeIds.length > 0 &&
+        revision.stepIds.length > 0
+      ) {
+        return revision.stepIds;
+      }
+    }
+  }
+  return [];
 }
 
 export function runDeterministicChecks(
@@ -171,18 +175,41 @@ export function runDeterministicChecks(
   const selectedStrategy = alignment.strategyMatches.find(({ matched }) => matched) ?? null;
   const explicitMatched = selectedStrategy?.strategyId === "EXPLICIT_PARTIAL_PRESSURES";
   const compressedMatched = selectedStrategy?.strategyId === "COMPRESSED_DIRECT_SUBSTITUTION";
-  const allStepIds = attempt.steps.map(({ id }) => id);
-  const stepById = new Map(attempt.steps.map((step) => [step.id, step]));
+  const attemptSteps = orderedSteps(attempt);
+  const allStepIds = attemptSteps.map(({ id }) => id);
+  const stepById = new Map(attemptSteps.map((step) => [step.id, step]));
   const resultStep = latestResultStep(attempt);
   const resultStepIds = resultStep ? [resultStep.id] : [];
-  const formulaSteps = attempt.steps.filter(({ formulaAst }) => formulaAst !== undefined);
-  const formulaStepIds = formulaSteps.map(({ id }) => id);
+  const compressedAnalysis = resultStep?.calculation
+    ? analyzeCompressedCalculation(problem, resultStep.calculation.expression)
+    : null;
+  const formulaSteps = attemptSteps.filter(({ formulaAst }) => formulaAst !== undefined);
+  const formulaStepIds = formulaSteps.length > 0
+    ? formulaSteps.map(({ id }) => id)
+    : compressedAnalysis?.dependenciesComplete
+      ? resultStepIds
+      : [];
   const stage = new Map<DiagnosisCategory, StageValue>();
+  const independentDataEvidence = independentEvidenceStepIds(
+    problem,
+    alignment,
+    "DATA_EXTRACTION",
+  );
+  const independentTargetEvidence = independentEvidenceStepIds(
+    problem,
+    alignment,
+    "TARGET_IDENTIFICATION",
+  );
+  const independentFormulaEvidence = independentEvidenceStepIds(
+    problem,
+    alignment,
+    "FORMULA",
+  );
 
   const irrelevantUses = attempt.factsUsed.filter((use) =>
     problem.authoredFacts.some((fact) => fact.id === use.factId && fact.relevance === "IRRELEVANT"),
   );
-  const explicitDataSelection = attempt.steps.some(
+  const explicitDataSelection = attemptSteps.some(
     ({ semanticType }) => semanticType === "DATA_SELECTION",
   );
   const invalidRequiredUses = attempt.factsUsed.filter((use) => {
@@ -221,15 +248,18 @@ export function runDeterministicChecks(
         "RELEVANT_DATA_OMITTED",
       ),
     );
-  } else if (explicitMatched) {
-    stage.set("DATA_EXTRACTION", evaluation("CORRECT", allStepIds));
+  } else if (independentDataEvidence.length > 0) {
+    stage.set(
+      "DATA_EXTRACTION",
+      evaluation("CORRECT", explicitMatched ? allStepIds : independentDataEvidence),
+    );
   } else {
     const contextual =
       factEvidence.length > 0
         ? hasLevelFour
           ? []
           : factEvidence
-        : attempt.steps
+        : attemptSteps
               .filter(
                 (step) =>
                   step.semanticType === "FINAL_ANSWER" ||
@@ -240,37 +270,31 @@ export function runDeterministicChecks(
     stage.set("DATA_EXTRACTION", evaluation("NOT_OBSERVED", contextual));
   }
 
+  const explicitTargetEvidence = attempt.target?.explicit
+    ? attempt.target.evidenceStepIds.filter((stepId) =>
+        independentTargetEvidence.includes(stepId),
+      )
+    : [];
   const targetEvidence = explicitMatched
     ? allStepIds
-    : attempt.target?.explicit
-      ? attempt.target.evidenceStepIds
-      : resultStepIds;
-  const targetHasIndependentEvidence = (attempt.target?.evidenceStepIds ?? []).some((stepId) => {
-    const step = stepById.get(stepId);
-    return Boolean(
-      step &&
-        (step.semanticType === "TARGET_IDENTIFICATION" ||
-          step.semanticType === "STRATEGY" ||
-          step.formulaAst ||
-          step.calculation),
-    );
-  });
-  if (attempt.target?.quantity === "KC" || attempt.target?.quantity === "OTHER") {
+    : explicitTargetEvidence.length > 0
+      ? explicitTargetEvidence
+      : independentTargetEvidence;
+  if (
+    (attempt.target?.quantity === "KC" || attempt.target?.quantity === "OTHER") &&
+    independentTargetEvidence.length > 0
+  ) {
     stage.set(
       "TARGET_IDENTIFICATION",
       evaluation("INCORRECT", attempt.target.evidenceStepIds, "TARGET_MISIDENTIFIED"),
     );
-  } else if (
-    (attempt.target?.quantity === "KP" && targetHasIndependentEvidence) ||
-    resultStep ||
-    formulaSteps.length > 0
-  ) {
+  } else if (attempt.target?.quantity === "KP" && independentTargetEvidence.length > 0) {
     stage.set("TARGET_IDENTIFICATION", evaluation("CORRECT", targetEvidence));
   } else {
     stage.set("TARGET_IDENTIFICATION", evaluation("NOT_OBSERVED"));
   }
 
-  const explicitStrategySteps = attempt.steps.filter(({ semanticType }) => semanticType === "STRATEGY");
+  const explicitStrategySteps = attemptSteps.filter(({ semanticType }) => semanticType === "STRATEGY");
   const wrongStrategy = explicitStrategySteps.find(
     (step) => step.concept === "KP_RESULT" && !step.formulaAst && !step.calculation,
   );
@@ -279,7 +303,7 @@ export function runDeterministicChecks(
   else if (compressedMatched) {
     strategyEvidence = unique([
       ...explicitStrategySteps.map(({ id }) => id),
-      ...attempt.steps
+      ...attemptSteps
         .filter((step) =>
           step.calculation && isCompleteCompressedCalculation(problem, step.calculation.expression),
         )
@@ -296,13 +320,21 @@ export function runDeterministicChecks(
     stage.set("STRATEGY", evaluation("NOT_OBSERVED", formulaStepIds.length > 0 ? formulaStepIds : resultStepIds));
   }
 
-  const authoredFormula = problem.formulaDefinitions[0]?.expression;
+  const authoredFormula = problem.formulaDefinitions.find(
+    ({ id }) => id === "formula-kp-no2-n2o4",
+  )?.expression;
   const observedFormula = formulaSteps.at(-1)?.formulaAst;
-  const comparison = authoredFormula && observedFormula
-    ? compareFormulaAst(observedFormula, authoredFormula)
-    : null;
-  if (comparison === "EQUIVALENT") {
-    stage.set("FORMULA", evaluation("CORRECT", explicitMatched ? allStepIds : formulaStepIds));
+  const comparison =
+    authoredFormula && observedFormula
+      ? compareFormulaAst(observedFormula, authoredFormula)
+      : compressedAnalysis?.dependenciesComplete
+        ? compressedAnalysis.formulaComparison
+        : null;
+  if (comparison === "EQUIVALENT" && independentFormulaEvidence.length > 0) {
+    stage.set(
+      "FORMULA",
+      evaluation("CORRECT", explicitMatched ? allStepIds : independentFormulaEvidence),
+    );
   } else if (comparison) {
     stage.set("FORMULA", evaluation("INCORRECT", formulaStepIds, formulaFailure(comparison)));
   } else {
@@ -362,19 +394,11 @@ export function runDeterministicChecks(
     stage.set("PRECISION", evaluation("CORRECT", explicitMatched ? allStepIds : resultStepIds));
   }
 
-  for (const category of ["STRATEGY", "FORMULA"] as const) {
-    const supportedStepIds = linkedHintStepIds(problem, attempt, category);
-    const current = stage.get(category)!;
-    if (supportedStepIds.length > 0 && current.status !== "INCORRECT") {
-      stage.set(category, evaluation("SUPPORTED_BY_HINT", supportedStepIds));
-    }
-  }
-
-  const stageEvaluations = diagnosisOrder.map((category) => ({
+  const baseStageEvaluations = diagnosisOrder.map((category) => ({
     category,
     ...stage.get(category)!,
   }));
-  const deterministicChecks = stageEvaluations.map<DeterministicCheckEvidence>((item) => ({
+  const deterministicChecks = baseStageEvaluations.map<DeterministicCheckEvidence>((item) => ({
     category: item.category,
     stepIds: item.evidenceStepIds,
     toolVersion: V2_DETERMINISTIC_TOOL_VERSION,
@@ -386,6 +410,17 @@ export function runDeterministicChecks(
           : "NOT_RUN",
     failureCode: item.status === "INCORRECT" ? item.failureCode : null,
   }));
+  const stageEvaluations = baseStageEvaluations.map((item) => {
+    if (item.status === "INCORRECT") return item;
+    const supportedStepIds = linkedHintStepIds(problem, attempt, item);
+    return supportedStepIds.length > 0
+      ? {
+          ...item,
+          status: "SUPPORTED_BY_HINT" as const,
+          evidenceStepIds: supportedStepIds,
+        }
+      : item;
+  });
   return {
     deterministicChecks,
     stageEvaluations,

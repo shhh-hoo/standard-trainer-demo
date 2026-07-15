@@ -107,7 +107,10 @@ describe("V1 structured adapter", () => {
       incompleteResult.attempt,
       context,
     );
-    expect(diagnosis.ok && diagnosis.trace.decision).toBe("INCOMPLETE_EVIDENCE");
+    expect(diagnosis.ok && diagnosis.trace).toMatchObject({
+      decision: "NOT_SOLVED",
+      attemptSupportOutcome: "NOT_SOLVED_AFTER_FULL_SCAFFOLD",
+    });
 
     const unsupportedExpression = canonicalSteps();
     unsupportedExpression.kpExpression = { expression: "arbitrary learner text" };

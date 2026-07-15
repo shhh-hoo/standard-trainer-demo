@@ -116,7 +116,7 @@ export function evaluateExpression(
 }
 
 function referencesEqual(left: VariableReference, right: VariableReference): boolean {
-  if (left.source !== right.source || left.symbol !== right.symbol) return false;
+  if (left.source !== right.source) return false;
   if (left.source === "AUTHORED_FACT" && right.source === "AUTHORED_FACT") {
     return left.factId === right.factId;
   }
@@ -188,6 +188,22 @@ export function compareFormulaAst(
   const inverted = swapDivision(authored);
   if (inverted && expressionsStructurallyEqual(observed, inverted)) return "INVERTED_RELATION";
 
+  if (
+    authored.kind === "BINARY" &&
+    authored.operator === "DIVIDE" &&
+    observed.kind === "BINARY" &&
+    observed.operator === "DIVIDE" &&
+    authored.left.kind === "BINARY" &&
+    authored.left.operator === "POWER" &&
+    observed.left.kind === "BINARY" &&
+    observed.left.operator === "POWER" &&
+    expressionsStructurallyEqual(authored.left.left, observed.left.left) &&
+    expressionsStructurallyEqual(authored.right, observed.right) &&
+    !expressionsStructurallyEqual(authored.left.right, observed.left.right)
+  ) {
+    return "WRONG_STOICHIOMETRIC_POWER";
+  }
+
   const authoredRefs = reasoningReferences(authored)
     .filter((ref) => ref.source === "REASONING_QUANTITY")
     .map((ref) => ref.reasoningNodeId)
@@ -197,17 +213,6 @@ export function compareFormulaAst(
     .map((ref) => ref.reasoningNodeId)
     .sort();
   if (authoredRefs.join("|") !== observedRefs.join("|")) return "WRONG_SPECIES";
-
-  const authoredPower = authored.kind === "BINARY" ? authored.left : null;
-  const observedPower = observed.kind === "BINARY" ? observed.left : null;
-  if (
-    authoredPower?.kind === "BINARY" &&
-    authoredPower.operator === "POWER" &&
-    observedPower?.kind === "BINARY" &&
-    observedPower.operator === "POWER"
-  ) {
-    return "WRONG_STOICHIOMETRIC_POWER";
-  }
   return "NOT_EQUIVALENT";
 }
 
