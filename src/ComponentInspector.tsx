@@ -169,8 +169,8 @@ export default function ComponentInspector() {
         </div>
         <div className="inspector-actions">
           <span className="component-version">{manifest.componentVersion}</span>
-          <a className="button button--secondary" href="?view=legacy">
-            Open legacy V0.1 proof
+          <a className="button button--secondary" href="?">
+            Open published runtime
           </a>
         </div>
       </header>

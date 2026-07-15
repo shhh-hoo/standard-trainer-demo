@@ -58,78 +58,27 @@ function threeRevisionFormulaAttempt(linkFinalRevision: boolean): NormalizedAtte
   return attempt;
 }
 
-describe("V2 exact supported-problem authority", () => {
-  it.each([
-    [
-      "authored total pressure",
-      (problem: DiagnosticProblemDefinitionV2) =>
-        Object.assign(problem.authoredFacts.find(({ id }) => id === "total-pressure")!, {
-          value: 501,
-        }),
-    ],
-    [
-      "target accepted unit",
-      (problem: DiagnosticProblemDefinitionV2) =>
-        Object.assign(problem.target, { acceptedUnits: ["Pa"] }),
-    ],
-    [
-      "target significant figures",
-      (problem: DiagnosticProblemDefinitionV2) =>
-        Object.assign(problem.target, { significantFigures: 4 }),
-    ],
-    [
-      "authored Kp formula",
-      (problem: DiagnosticProblemDefinitionV2) => {
-        const expression = problem.formulaDefinitions[0]!.expression;
-        if (
-          expression.kind !== "BINARY" ||
-          expression.left.kind !== "BINARY" ||
-          expression.left.operator !== "POWER" ||
-          expression.left.right.kind !== "NUMBER"
-        ) {
-          throw new Error("Expected authored Kp power");
-        }
-        Object.assign(expression.left.right, { value: 3, raw: "3" });
-      },
-    ],
-    [
-      "strategy requirement",
-      (problem: DiagnosticProblemDefinitionV2) =>
-        Object.assign(problem.reasoningGraph.acceptedStrategies[0]!.nodeRequirements[0]!, {
-          allowedEvidenceKinds: ["EXPLICIT_STEP"],
-        }),
-    ],
-    [
-      "recognition threshold",
-      (problem: DiagnosticProblemDefinitionV2) =>
-        Object.assign(problem.recognitionPolicy, { autoAcceptThreshold: 0.96 }),
-    ],
-    [
-      "hint reveal node",
-      (problem: DiagnosticProblemDefinitionV2) =>
-        Object.assign(
-          problem.hintPolicy.hints.find(({ id }) => id === "FORMULA-KP-01")!,
-          { revealedReasoningNodeIds: ["identify-kp-target"] },
-        ),
-    ],
-  ])("rejects mutated canonical content: %s", (_label, mutate) => {
+describe("V2 bounded structural problem authority", () => {
+  it("accepts authored content variation instead of enforcing one serialized fixture", () => {
     const problem = structuredClone(kpGoldProblemV2);
-    mutate(problem);
-
-    expect(validateSupportedDiagnosticProblem(problem)).toMatchObject({
-      ok: false,
-      issues: [expect.objectContaining({ code: "UNSUPPORTED_PROBLEM_DEFINITION" })],
-    });
-  });
-
-  it("accepts a structured clone whose object key insertion order differs", () => {
-    const problem = structuredClone(kpGoldProblemV2);
-    const reversedNodes = Object.fromEntries(
-      Object.entries(problem.reasoningGraph.nodes).reverse(),
-    );
-    Object.assign(problem.reasoningGraph, { nodes: reversedNodes });
+    Object.assign(problem.authoredFacts.find(({ id }) => id === "total-pressure")!, { value: 501 });
+    Object.assign(problem.target, { acceptedUnits: ["Pa"], significantFigures: 4 });
 
     expect(validateSupportedDiagnosticProblem(problem)).toEqual({ ok: true, value: problem });
+  });
+
+  it.each([
+    ["unresolved graph dependency", (problem: DiagnosticProblemDefinitionV2) => Object.assign(problem.reasoningGraph.nodes["calculate-result"]!, { dependencies: ["missing-node"] })],
+    ["unresolved formula fact", (problem: DiagnosticProblemDefinitionV2) => {
+      const expression = problem.formulaDefinitions[0]!.expression;
+      if (expression.kind !== "BINARY" || expression.right.kind !== "VARIABLE" || expression.right.reference.source !== "REASONING_QUANTITY") throw new Error("Unexpected fixture");
+      Object.assign(expression.right.reference, { reasoningNodeId: "missing-node" });
+    }],
+    ["unresolved hint node", (problem: DiagnosticProblemDefinitionV2) => Object.assign(problem.hintPolicy.hints[0]!, { revealedReasoningNodeIds: ["missing-node"] })],
+  ])("rejects malformed internal references: %s", (_label, mutate) => {
+    const problem = structuredClone(kpGoldProblemV2);
+    mutate(problem);
+    expect(validateSupportedDiagnosticProblem(problem)).toMatchObject({ ok: false, issues: [expect.objectContaining({ code: "UNSUPPORTED_PROBLEM_DEFINITION" })] });
   });
 });
 

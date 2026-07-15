@@ -1,10 +1,13 @@
 # Demo
 
-1. Open the default component inspector and read the manifest for the single supported equilibrium problem.
-2. Select **Exact match**, **Partial match**, and **No match**. Confirm `INVOKE_COMPONENT`, `REQUIRE_INTERPRETER`, and `DO_NOT_INVOKE`; no temporary-support or gap-recording policy appears in the Trainer.
-3. In the separately labelled **Developer fixture runner**, select each authored scenario. Confirm that the result reports `COMPLETED`, keeps decision and failure code separate, and records component-owned `TYPED_WORKING_MOCK` provenance.
-4. Expand the evidence trace and inspect problem, graph, engine, tool, interpreter, and support-causality fields.
-5. Open `?view=legacy` for the frozen learner proof. Enter `1 mol`, `0.4`, `0.6`, `200 kPa`, `300 kPa`, `p(NO2)^2/p(N2O4)`, and `450 kPa` to `3` significant figures.
-6. Submit and inspect `VALID_PATH`; then change the first mole fraction to `0.5` and confirm that later steps remain `NOT_EVALUATED` after the first invalid step.
+1. Open Standard Trainer and show the Foundry registry with Kp and Stoichiometric product mass.
+2. Select **Kp from equilibrium amounts**. Point out migrated provenance, component version, hash, and immutable contract copy.
+3. Submit the default complete evidence to receive `SOLVED` with the component and runtime versions in the trace.
+4. Select **Stoichiometric product mass**. Submit the canonical `1` Mg:MgO ratio, `8.00 g`, and `3` significant figures.
+5. Change the ratio to `0.5`. The first pedagogical error becomes `FORMULA / WRONG_STOICHIOMETRIC_RATIO`.
+6. Restore the ratio and try an arithmetic working value of `7.9`, unit `kg`, or `2` significant figures to see each typed diagnosis.
+7. Omit the first reasoning link to show `MISSING_REASONING_LINK` without pretending incomplete evidence is solved.
+8. Open `?view=inspector` to inspect the previous V2 capability preflight and developer fixture envelope.
 
-The demo contains no Learning Foundry shell, registry, model call, OCR, hint orchestration, generated question, free-text parser, or ECF claim.
+The demo contains no LLM call, arbitrary parser, generated-content ingestion, general Chemistry support, or ECF claim.
+
