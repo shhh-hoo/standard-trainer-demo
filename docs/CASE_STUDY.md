@@ -50,6 +50,8 @@ This is not tamper-proof storage. `localStorage` and exported JSON are controlle
 
 The frozen V0.1 15-test suite covers the valid canonical path, the four deterministic check dimensions, Unicode-subscript expression input, first-invalid-step stopping behavior, missing steps, graph consistency, evidence validation, persistence fallbacks, JSON export, and key UI outcomes. The graph tests verify both dependency existence and order and ensure the step map has no orphan definitions. The hardened V2 measurement contract adds fifteen fixture-integrity tests for recomputable equations, strategy evidence, recognition gating, diagnosis coverage, and assistance causality without changing the V0.1 runtime.
 
+The V2 deterministic core adds twenty runtime tests around fail-closed validation, AST evaluation, recognition gating, exact 16-fixture diagnosis, metamorphic anti-overfitting, trace consistency, assistance causality, the V1 adapter, and four typed mock scenarios. Exact match demonstrates execution of the authored gold contract; it does not demonstrate curriculum coverage.
+
 GitHub Actions installs from the lockfile, type-checks, runs the tests, and creates a production build. A separate Pages workflow repeats verification before producing the deployable artifact. This makes the public demo downstream of the same checks used for engineering review.
 
 ## 9. Trade-offs
@@ -62,16 +64,19 @@ Browser-only persistence keeps deployment small and transparent. The cost is tha
 
 The project does not perform arbitrary chemistry reasoning, natural-language parsing, arbitrary expression parsing, question generation, hints, learner modelling, bounded or general ECF, or agentic workflow orchestration. It has no production authentication, remote database, analytics, or security control plane. The one curated problem does not establish transfer to another calculation topology or exam-board coverage.
 
-Accordingly, the evidence supports only this claim: for the frozen problem and accepted structured inputs, the engine deterministically identifies the first invalid canonical step and emits a validated, versioned trace.
+The V2 typed-working adapter is explicitly a mock scenario selector, not NLP. The repository still contains no OCR, real parser, server endpoint, or model call, and the public live learner experience remains V0.1.
+
+Accordingly, the evidence supports only this claim: for the frozen V0.1 path and the authored V2 gold evidence corpus, the deterministic engines identify the first relevant invalid stage and emit validated, versioned traces.
 
 ## 11. Next validated experiments
 
 Potential follow-on work should remain hypothesis-led rather than being assumed as product scope:
 
-1. Author a second calculation topology and test whether the graph and tool contracts generalize without engine-specific exceptions.
-2. Specify a bounded, human-reviewed ECF policy and evaluate marking agreement separately from path diagnosis.
-3. Enrich the authored problem schema only where a second topology demonstrates a concrete need.
-4. Define a human-reviewed hint contract tied to evidence codes, then test whether it supports repair without revealing the complete method.
-5. Evaluate later constrained model-assisted parsing against the deterministic structured-input baseline, with explicit abstention and review behavior.
+1. Connect a future PR #7 learner interface only to the V2 public API and explicit typed mock scenarios, without implying free-text parsing.
+2. Author a second calculation topology and test whether the graph and tool contracts generalize without engine-specific exceptions.
+3. Specify a bounded, human-reviewed ECF policy and evaluate marking agreement separately from path diagnosis.
+4. Enrich the authored problem schema only where a second topology demonstrates a concrete need.
+5. Define a human-reviewed hint contract tied to evidence codes, then test whether it supports repair without revealing the complete method.
+6. Evaluate later constrained model-assisted parsing against the deterministic structured-input baseline, with explicit abstention and review behavior.
 
 These are candidates, not implemented capabilities. The present release remains a curated calculation-path core proof.
