@@ -12,9 +12,10 @@ flowchart TD
     M["Component manifest"]
     F["Capability preflight<br/>exact · partial · unsupported"]
     I["Typed invocation envelope"]
-    A["Bounded adapters<br/>normalized · legacy · explicit mock"]
+    A["Operational adapters<br/>normalized · legacy"]
     E["V2 deterministic domain core"]
     V["Structured result envelope<br/>validated evidence trace or issues"]
+    D["Developer fixture runner<br/>separate, not registry-discoverable"]
     X["Future Foundry responsibilities<br/>routing · interpretation · gap handling"]
 
     M --> F
@@ -23,6 +24,7 @@ flowchart TD
     I --> A
     A --> E
     E --> V
+    D --> E
     F -->|PARTIAL or UNSUPPORTED| V
     X -. outside repository .-> R
 ```
@@ -40,10 +42,12 @@ flowchart TD
 - Base deterministic outcomes remain separate from learner-facing hint-support overlays, so a supported stage can retain a tool `PASS`; the overlay and support outcome share one resolved decision revision.
 - A limited V1 structured adapter records the existing seven-field form as full-scaffold provenance without modifying the V0.1 runtime.
 - A four-scenario typed-working mock adapter provides deterministic normalized inputs for future UI work; it is not a parser.
-- A public component manifest declares the single supported problem, supported input envelopes, deterministic outputs, and explicit limitations.
+- A versioned public component manifest declares the single supported problem, two operational input envelopes, contract dependencies, deterministic outputs, explicit limitations, and separately labelled developer fixtures.
 - Capability preflight distinguishes exact, partial, and unsupported requests without invoking the domain engine or pretending missing interpretation exists.
-- The invocation boundary enforces request/input agreement and fixes adapter provenance before it calls the existing V2 public API.
-- The structured result envelope preserves validated diagnosis traces and returns fail-closed issues for invalid or unsupported inputs.
+- Preflight reports deterministic match dimensions instead of a cross-component ranking score; fallback and gap policy remain outside the Trainer.
+- The runtime invocation boundary accepts unknown transport data, validates request/input agreement and context, fixes adapter-owned provenance, and fails closed before it calls the existing V2 public API.
+- The structured result envelope distinguishes interpreter-required from unsupported requests, includes the complete preflight resolution, and preserves V2 validation issue paths.
+- A developer-only fixture API powers the inspector without registering mock scenarios as operational learner inputs.
 - The default React surface is a minimal developer inspector. The frozen V0.1 workbench remains reachable with `?view=legacy`.
 
 ## Deferred components

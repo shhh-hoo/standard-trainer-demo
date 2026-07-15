@@ -12,6 +12,10 @@ describe("trainer component inspector", () => {
       screen.getByRole("heading", { name: "Chemistry Calculation Trainer" }),
     ).toBeVisible();
     expect(screen.getByText("Component inspector · Not a learner app")).toBeVisible();
+    expect(screen.getByText("Operational inputs")).toBeVisible();
+    expect(screen.getByText("Developer fixtures")).toBeVisible();
+    expect(screen.getByText("Operational component invocation")).toBeVisible();
+    expect(screen.getByText("Developer fixture runner")).toBeVisible();
     expect(screen.getByText("EXACT_MATCH")).toBeVisible();
     expect(screen.getByText("INVOKE_COMPONENT")).toBeVisible();
 
@@ -22,11 +26,13 @@ describe("trainer component inspector", () => {
 
     await user.click(screen.getByRole("button", { name: "No match" }));
     expect(screen.getByText("UNSUPPORTED")).toBeVisible();
-    expect(screen.getByText("RECORD_CAPABILITY_GAP")).toBeVisible();
+    expect(screen.getByText("DO_NOT_INVOKE")).toBeVisible();
     expect(screen.getByText("supported-problem-definition")).toBeVisible();
+    expect(screen.queryByText("RECORD_CAPABILITY_GAP")).not.toBeInTheDocument();
+    expect(screen.queryByText("USE_TEMPORARY_SUPPORT")).not.toBeInTheDocument();
 
     await user.selectOptions(screen.getByLabelText("Mock scenario"), "INVERTED_FORMULA");
-    await user.click(screen.getByRole("button", { name: "Invoke component" }));
+    await user.click(screen.getByRole("button", { name: "Run developer fixture" }));
     expect(screen.getByText("COMPLETED")).toBeVisible();
     expect(screen.getByText("STUDENT_ERROR")).toBeVisible();
     expect(screen.getByText("INVERTED_RELATION")).toBeVisible();
@@ -37,5 +43,8 @@ describe("trainer component inspector", () => {
       "?view=legacy",
     );
     expect(screen.queryByText(/OCR is enabled/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Foundry orchestrator decides fallback and gap handling/i),
+    ).toBeVisible();
   });
 });

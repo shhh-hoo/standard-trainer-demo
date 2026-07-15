@@ -27,6 +27,8 @@ V0.1 remains the frozen learner baseline. The `2.0.0-draft.2` modality-neutral m
 - A separate V2 deterministic domain API with fail-closed input/trace validation.
 - Exact engine diagnosis for 16 authored V2 gold fixtures and four explicit typed mock scenarios.
 - A public trainer-component contract that distinguishes exact, partial, and unsupported requests before invocation.
+- Runtime-validated invocation envelopes that fail closed and retain issue paths.
+- Operational inputs separated from developer-only authored fixtures.
 - A minimal developer inspector for the manifest, capability fit, explicit mock invocation, and evidence trace.
 
 ## Explicit limitations
@@ -68,7 +70,7 @@ npm test
 npm run build
 ```
 
-The current suite contains 88 tests: 15 for the frozen V0.1 runtime, 15 contract-integrity checks for the V2 gold artifacts, 50 runtime/core/adapter/adversarial checks for the deterministic V2 implementation, and 8 component-boundary and inspector checks. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2), the V2 contract baseline in [PR #5](https://github.com/shhh-hoo/standard-trainer-demo/pull/5), and the deterministic V2 core in [PR #6](https://github.com/shhh-hoo/standard-trainer-demo/pull/6).
+The current suite contains 90 tests: 15 for the frozen V0.1 runtime, 15 contract-integrity checks for the V2 gold artifacts, 50 runtime/core/adapter/adversarial checks for the deterministic V2 implementation, and 10 component-boundary and inspector checks. It is verified by [GitHub Actions CI](.github/workflows/ci.yml). The calculation-path core milestone was merged in [PR #2](https://github.com/shhh-hoo/standard-trainer-demo/pull/2), the V2 contract baseline in [PR #5](https://github.com/shhh-hoo/standard-trainer-demo/pull/5), and the deterministic V2 core in [PR #6](https://github.com/shhh-hoo/standard-trainer-demo/pull/6).
 
 ## Demo walkthrough
 

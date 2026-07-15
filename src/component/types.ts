@@ -8,10 +8,17 @@ export type CapabilityCoverage = "EXACT_MATCH" | "PARTIAL_MATCH" | "UNSUPPORTED"
 export type ComponentRecommendedAction =
   | "INVOKE_COMPONENT"
   | "REQUIRE_INTERPRETER"
-  | "USE_TEMPORARY_SUPPORT"
-  | "RECORD_CAPABILITY_GAP";
+  | "DO_NOT_INVOKE";
+
+export type InterpreterRequiredInputKind =
+  | "natural-language-working"
+  | "handwriting-image"
+  | "digital-ink"
+  | "scanned-document"
+  | "mixed-working";
 
 export interface ComponentManifest {
+  readonly manifestSchemaVersion: "1.0.0";
   readonly componentId: string;
   readonly componentVersion: string;
   readonly componentType: "trainer";
@@ -21,7 +28,13 @@ export interface ComponentManifest {
     readonly supportedProblemDefinitions: readonly string[];
   };
   readonly supportedTasks: readonly string[];
-  readonly supportedInputs: readonly string[];
+  readonly operationalInputs: readonly string[];
+  readonly executionRequirements: readonly string[];
+  readonly developerFixtures: readonly TypedWorkingMockScenario[];
+  readonly contractDependencies: {
+    readonly measurementContract: string;
+    readonly problemDefinition: string;
+  };
   readonly outputs: readonly string[];
   readonly guarantees: {
     readonly diagnosis: string;
@@ -35,34 +48,46 @@ export interface LearningRequestDescriptor {
   readonly task: string;
   readonly problemDefinition: string | null;
   readonly inputKind: string;
-  readonly demandSignal?: "LOW_RISK_ONE_OFF" | "REPEATED_HIGH_VALUE";
+}
+
+export interface CapabilityMatchDimensions {
+  readonly task: boolean;
+  readonly problemDefinition: boolean;
+  readonly inputReady: boolean;
 }
 
 export interface CapabilityFitResult {
   readonly coverage: CapabilityCoverage;
   readonly componentId: string;
-  readonly fitScore: number;
+  readonly matchDimensions: CapabilityMatchDimensions;
   readonly matchedCapabilities: readonly string[];
   readonly missingCapabilities: readonly string[];
   readonly limitations: readonly string[];
   readonly recommendedAction: ComponentRecommendedAction;
 }
 
+export type ComponentInvocationStatus =
+  | "COMPLETED"
+  | "RECOGNITION_UNCERTAIN"
+  | "INVALID_INPUT"
+  | "REQUIRES_INTERPRETER"
+  | "NOT_INVOKED_UNSUPPORTED";
+
+export interface ComponentIssue {
+  readonly path?: string;
+  readonly code: string;
+  readonly message: string;
+}
+
 export interface ComponentResultEnvelope {
   readonly componentId: string;
   readonly componentVersion: string;
   readonly coverage: CapabilityCoverage;
-  readonly status:
-    | "COMPLETED"
-    | "RECOGNITION_UNCERTAIN"
-    | "INVALID_INPUT"
-    | "UNSUPPORTED";
+  readonly status: ComponentInvocationStatus;
+  readonly preflight: CapabilityFitResult;
   readonly result?: DiagnosticEvidenceTraceV2;
   readonly limitations: readonly string[];
-  readonly issues?: readonly {
-    readonly code: string;
-    readonly message: string;
-  }[];
+  readonly issues?: readonly ComponentIssue[];
 }
 
 export type ComponentInvocationInput =
@@ -75,10 +100,7 @@ export type ComponentInvocationInput =
       readonly submission: CalculationPathSubmission;
     }
   | {
-      readonly kind: "explicit-mock-scenario";
-      readonly scenario: TypedWorkingMockScenario;
-      readonly attemptId: string;
-      readonly submittedAt: string;
+      readonly kind: InterpreterRequiredInputKind;
     };
 
 export interface ComponentInvocation {
@@ -87,8 +109,17 @@ export interface ComponentInvocation {
   readonly context: DiagnosisContext;
 }
 
+export interface TrainerDeveloperScenarioInvocation {
+  readonly input: {
+    readonly scenario: TypedWorkingMockScenario;
+    readonly attemptId: string;
+    readonly submittedAt: string;
+  };
+  readonly context: DiagnosisContext;
+}
+
 export interface LearningComponent {
   readonly manifest: ComponentManifest;
   preflight(request: LearningRequestDescriptor): CapabilityFitResult;
-  invoke(invocation: ComponentInvocation): ComponentResultEnvelope;
+  invoke(invocation: unknown): ComponentResultEnvelope;
 }

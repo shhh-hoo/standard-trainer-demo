@@ -70,9 +70,9 @@ Accordingly, the evidence supports only this claim: for the frozen V0.1 path and
 
 ## 11. Component boundary
 
-The deterministic V2 runtime is now packaged as a bounded Learning Foundry trainer component rather than expanded into a standalone learning product. Its public manifest states exact subject and problem coverage. Capability preflight distinguishes exact requests from requests that still need an interpreter and requests that do not fit at all. Typed invocation and result envelopes preserve the existing V2 validation and provenance rules instead of weakening them for UI convenience.
+The deterministic V2 runtime is now packaged as a bounded Learning Foundry trainer component rather than expanded into a standalone learning product. Its versioned public manifest states exact subject, problem, operational input, and contract-dependency coverage. Capability preflight separates learner task intent from the normalized execution requirement, returns explicit match dimensions rather than a global fit score, and distinguishes exact requests from requests that still need an interpreter and requests that do not fit at all.
 
-The accompanying developer inspector demonstrates those boundaries and four explicit mock outcomes. It is not a learner workflow. Routing, OCR, natural-language interpretation, confirmation, temporary support, capability-gap persistence, library, schedule, and cross-component orchestration remain responsibilities of a later Foundry shell.
+The public invocation boundary accepts unknown transport data, fails closed without throwing, preserves validation issue paths, and protects adapter-owned interpreter and timestamp provenance. The accompanying developer inspector demonstrates those boundaries and four authored fixtures through a separate developer-only API. It is not a learner workflow. Routing, OCR, natural-language interpretation, confirmation, temporary support, capability-gap persistence, library, schedule, and cross-component orchestration remain responsibilities of a later Foundry shell.
 
 ## 12. Next validated experiments
 

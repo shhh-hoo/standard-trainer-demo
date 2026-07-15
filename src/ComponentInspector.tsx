@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   chemistryCalculationTrainer,
+  invokeChemistryCalculationTrainerDeveloperScenario,
   SUPPORTED_PROBLEM_DEFINITION,
 } from "./component/chemistryCalculationTrainer";
 import type {
@@ -17,7 +18,7 @@ const coverageExamples = Object.freeze({
     label: "Exact match",
     description: "Canonical problem with an already-normalized attempt.",
     request: Object.freeze({
-      task: "diagnose-normalized-calculation-attempt",
+      task: "diagnose-calculation-attempt",
       problemDefinition: SUPPORTED_PROBLEM_DEFINITION,
       inputKind: "normalized-attempt",
     }),
@@ -26,19 +27,18 @@ const coverageExamples = Object.freeze({
     label: "Partial match",
     description: "Canonical problem supplied as handwriting; an interpreter is still missing.",
     request: Object.freeze({
-      task: "diagnose-normalized-calculation-attempt",
+      task: "diagnose-calculation-attempt",
       problemDefinition: SUPPORTED_PROBLEM_DEFINITION,
       inputKind: "handwriting-image",
     }),
   }),
   unsupported: Object.freeze({
     label: "No match",
-    description: "A repeated Buffer pH request outside this component's authored boundary.",
+    description: "A Buffer pH request outside this component's authored boundary.",
     request: Object.freeze({
-      task: "diagnose-normalized-calculation-attempt",
+      task: "diagnose-calculation-attempt",
       problemDefinition: "BUFFER_PH_CALCULATION@1.0.0",
       inputKind: "natural-language-working",
-      demandSignal: "REPEATED_HIGH_VALUE",
     }),
   }),
 } satisfies Readonly<
@@ -138,14 +138,8 @@ export default function ComponentInspector() {
   function invokeMock(): void {
     const submittedAt = "2026-07-15T10:00:00.000Z";
     setEnvelope(
-      chemistryCalculationTrainer.invoke({
-        request: {
-          task: "diagnose-normalized-calculation-attempt",
-          problemDefinition: SUPPORTED_PROBLEM_DEFINITION,
-          inputKind: "explicit-mock-scenario",
-        },
+      invokeChemistryCalculationTrainerDeveloperScenario({
         input: {
-          kind: "explicit-mock-scenario",
           scenario,
           attemptId: `inspector-${scenario.toLowerCase()}`,
           submittedAt,
@@ -204,9 +198,10 @@ export default function ComponentInspector() {
             </div>
           </dl>
           <CapabilityList
-            label="Supported inputs"
-            values={manifest.supportedInputs}
+            label="Operational inputs"
+            values={manifest.operationalInputs}
           />
+          <CapabilityList label="Developer fixtures" values={manifest.developerFixtures} />
           <CapabilityList label="Explicitly unsupported" values={manifest.unsupported} />
         </article>
 
@@ -235,7 +230,11 @@ export default function ComponentInspector() {
           <div className={`coverage-badge coverage-badge--${fit.coverage.toLowerCase()}`}>
             <span>Coverage</span>
             <strong>{fit.coverage}</strong>
-            <small>Fit score {fit.fitScore.toFixed(2)}</small>
+            <small>
+              Task {String(fit.matchDimensions.task)} · Problem{" "}
+              {String(fit.matchDimensions.problemDefinition)} · Input ready{" "}
+              {String(fit.matchDimensions.inputReady)}
+            </small>
           </div>
           <div className="action-callout">
             <span>Recommended action</span>
@@ -244,13 +243,20 @@ export default function ComponentInspector() {
           <CapabilityList label="Matched capabilities" values={fit.matchedCapabilities} />
           <CapabilityList label="Missing capabilities" values={fit.missingCapabilities} />
           <CapabilityList label="Limitations" values={fit.limitations} />
+          <div className="operational-boundary">
+            <h3>Operational component invocation</h3>
+            <p>
+              Only exact operational inputs may call the deterministic diagnosis core.
+            </p>
+          </div>
         </article>
 
         <article className="inspector-card invocation-card">
-          <p className="panel-label">Component invocation</p>
-          <h2>Run an explicit mock</h2>
+          <p className="panel-label">Developer fixture runner</p>
+          <h2>Run an authored fixture</h2>
           <p className="example-description">
-            These four scenarios are authored fixtures. They do not parse learner text.
+            Developer only. These authored fixtures are not learner inputs or
+            registry-discoverable capabilities, and they do not parse learner text.
           </p>
           <label className="scenario-field">
             Mock scenario
@@ -267,13 +273,13 @@ export default function ComponentInspector() {
           </label>
           <blockquote>{typedWorkingScenarioDisplay[scenario]}</blockquote>
           <button className="button button--primary" type="button" onClick={invokeMock}>
-            Invoke component
+            Run developer fixture
           </button>
           {envelope ? (
             <InvocationResult envelope={envelope} />
           ) : (
             <p className="inspector-empty invocation-empty">
-              Invoke a mock to inspect the structured result envelope.
+              Run a developer fixture to inspect the structured result envelope.
             </p>
           )}
         </article>
@@ -282,6 +288,7 @@ export default function ComponentInspector() {
       <footer className="inspector-footer">
         <strong>Boundary:</strong> Registry discovery, Chat interpretation, temporary support,
         capability-gap persistence, Library, and Schedule belong to Learning Foundry—not this
+        component. The Foundry orchestrator decides fallback and gap handling outside this
         component.
       </footer>
     </main>
