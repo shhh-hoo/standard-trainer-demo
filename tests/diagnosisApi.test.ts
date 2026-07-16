@@ -11,7 +11,7 @@ describe("Trainer Diagnosis HTTP contract", () => {
     const handle = createDiagnosisApiHandler({ registry });
     const response = await handle(new Request("http://127.0.0.1:4177/health"));
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true, service: "trainer-diagnosis-api" });
+    await expect(response.json()).resolves.toEqual({ ok: true, service: "trainer-diagnosis-api", governedCaseCount: 0 });
   });
 
   it("returns structured client errors for malformed requests", async () => {

@@ -7,6 +7,7 @@ import {
 } from "../src/foundry-runtime/index.ts";
 import path from "node:path";
 import { PurposeSeparatedLearnerDiagnosisTraceRepository } from "./lib/learner-diagnosis-trace-repository.ts";
+import { CalculationCaseRepository } from "./lib/calculation-case-repository.ts";
 
 const port = Number(process.env.TRAINER_DIAGNOSIS_PORT ?? 4177);
 const providers = [
@@ -18,7 +19,9 @@ const repository = new PurposeSeparatedLearnerDiagnosisTraceRepository(
   process.env.PRODUCT_DIAGNOSIS_STORE_DIR ?? process.env.DIAGNOSIS_TRACE_STORE_DIR ?? path.resolve(".local-data/product-diagnoses"),
   process.env.AGENT_EVAL_DIAGNOSIS_STORE_DIR ?? path.resolve(".local-data/agent-eval-diagnoses"),
 );
-const handle = createDiagnosisApiHandler({ registry }, repository);
+const caseRepository = await CalculationCaseRepository.load(path.resolve("cases"));
+const governedCaseCount = (await caseRepository.list()).length;
+const handle = createDiagnosisApiHandler({ registry }, repository, caseRepository);
 
 const server = createServer(async (request, response) => {
   const chunks: Buffer[] = [];
@@ -36,4 +39,5 @@ const server = createServer(async (request, response) => {
 
 server.listen(port, "127.0.0.1", () => {
   console.log(`Trainer Diagnosis API listening on http://127.0.0.1:${port}`);
+  console.log(`governed calculation cases loaded: ${governedCaseCount} · not live student evidence`);
 });

@@ -17,6 +17,11 @@ export interface LearnerDiagnosisTraceStore {
   clear?(runPurpose: "PRODUCT" | "AGENT_EVAL"): Promise<void>;
 }
 
+export interface GovernedCalculationCaseStore {
+  get(caseId: string): Promise<unknown | null>;
+  list(): Promise<readonly unknown[]>;
+}
+
 function json(status: number, body: unknown): Response {
   return Response.json(body, {
     status,
@@ -33,12 +38,20 @@ function codeFrom(error: unknown): string {
   return /^[A-Z][A-Z_]+:/.test(message) ? message.slice(0, message.indexOf(":")) : "DIAGNOSIS_API_ERROR";
 }
 
-export function createDiagnosisApiHandler(dependencies: LearnerDiagnosisDependencies, repository?: LearnerDiagnosisTraceStore) {
+export function createDiagnosisApiHandler(dependencies: LearnerDiagnosisDependencies, repository?: LearnerDiagnosisTraceStore, caseRepository?: GovernedCalculationCaseStore) {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return json(204, null);
     if (request.method === "GET" && url.pathname === "/health") {
-      return json(200, { ok: true, service: "trainer-diagnosis-api" });
+      return json(200, { ok: true, service: "trainer-diagnosis-api", governedCaseCount: caseRepository ? (await caseRepository.list()).length : 0 });
+    }
+    if (request.method === "GET" && url.pathname.startsWith("/cases/")) {
+      const caseId = decodeURIComponent(url.pathname.slice("/cases/".length));
+      const calculationCase = caseRepository ? await caseRepository.get(caseId) : null;
+      return calculationCase ? json(200, { ok: true, case: calculationCase, evidenceClassification: "GOVERNED_CASE_NOT_LIVE_STUDENT_EVIDENCE" }) : json(404, { ok: false, error: { code: "CALCULATION_CASE_NOT_FOUND", message: "No governed calculation case has this id." } });
+    }
+    if (request.method === "GET" && url.pathname === "/cases") {
+      return json(200, { ok: true, cases: caseRepository ? await caseRepository.list() : [], evidenceClassification: "GOVERNED_CASE_NOT_LIVE_STUDENT_EVIDENCE" });
     }
     if (request.method === "GET" && url.pathname.startsWith("/diagnoses/")) {
       const traceId = decodeURIComponent(url.pathname.slice("/diagnoses/".length));

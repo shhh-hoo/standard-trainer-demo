@@ -21,6 +21,8 @@ When `VITE_DEMO_REGISTRY_URL` is set by the Learning Foundry localhost launcher,
 
 The runtime selects recommended support only after diagnosis: `selectSupportHint(component, trace)` uses `firstPedagogicalError` to choose a governed hint and never treats hint text as diagnosis. In the product story, v1.0.0 returns the original ratio hint while v1.1.0 returns the strengthened explicit 1:1 transfer.
 
+The Diagnosis API also loads the five schema-validated, school-authored 9701 calculation cases in `cases/`. They are exposed through read-only `GET /cases` and `GET /cases/:caseId` endpoints with the explicit classification `GOVERNED_CASE_NOT_LIVE_STUDENT_EVIDENCE`. Loading or reading a case never creates a Diagnosis trace or learner evidence. Completed Diagnoses remain independently resolvable through `GET /diagnoses/:traceId`.
+
 `?embedded=1` provides the clean Demo Shell surface and emits `RUNTIME_COMPONENT_SELECTED` and `RUNTIME_DIAGNOSIS_COMPLETED` to the configured parent origin. The legacy `?view=inspector` route is unchanged.
 
 ## Reliable core retained
