@@ -1,6 +1,6 @@
 # Foundry integration
 
-Learning Foundry runs `npm run export:components` and then `npm run sync:trainer`. The sync copies the generated canonical JSON Schema, `manifest.json`, and immutable Kp and mass snapshots into `src/published-components`. Drafts, failed generation samples, Foundry UI, and component evaluation reports stay upstream.
+Learning Foundry runs `npm run export:components` and then `npm run sync:trainer`. The sync copies the generated canonical JSON Schema, `manifest.json`, and immutable Kp and mass snapshots into `src/published-components`. Drafts, failed generation samples, Foundry UI, and Component Contract Check reports stay upstream.
 
 The consumer registry exposes:
 

@@ -3,3 +3,8 @@ export * from "./capability";
 export * from "./validation";
 export * from "./adapters";
 export * from "./registry";
+export * from "./providers";
+export * from "./support";
+export * from "./runtime-events";
+export * from "./diagnosis-service";
+export * from "./diagnosis-api";

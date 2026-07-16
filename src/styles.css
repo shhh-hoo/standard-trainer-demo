@@ -11,6 +11,8 @@ main { width:min(1540px,100%); margin:auto; padding:clamp(1rem,3vw,2.5rem); }.sk
 button:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid #4f8cff; outline-offset:2px; }
 @media(max-width:1050px){.runtime-grid { grid-template-columns:1fr 1.5fr; }.evidence-panel { grid-column:1/-1; }.runtime-header { grid-template-columns:1fr; }.component-selector { grid-template-columns:1fr; }}
 @media(max-width:680px){.component-options,.runtime-grid,.reasoning-route,.attempt-panel form { grid-template-columns:1fr; }.component-selector { padding:1rem; }.runtime-header { padding:2rem 1.2rem; }.runtime-header h1 { font-size:3rem; }.attempt-panel .button { grid-column:auto; }}
+.recommended-support { display:grid; gap:.5rem; margin:1rem 0; border:1px solid #9db9a6; border-radius:8px; padding:1rem; background:#f4fbf5; }.recommended-support span { color:var(--green); font-size:.65rem; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }.recommended-support strong { line-height:1.5; }
+.embedded-runtime { width:100%; padding:18px; }.embedded-runtime .runtime-header { padding:1.4rem 2rem; border-radius:12px 12px 0 0; }.embedded-runtime .runtime-header h1 { font-size:2.5rem; margin:.5rem 0; }.embedded-runtime .runtime-header>div>p:last-child { display:none; }.embedded-runtime .runtime-grid { grid-template-columns:minmax(220px,.75fr) minmax(400px,1.35fr) minmax(280px,.9fr); }.embedded-runtime .contract-panel,.embedded-runtime .runtime-grid>section,.embedded-runtime .runtime-grid>aside { padding:1.2rem; }
 
 * {
   box-sizing: border-box;

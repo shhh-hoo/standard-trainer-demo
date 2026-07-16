@@ -4,12 +4,12 @@ import { describe, expect, it } from "vitest";
 import App from "../src/App";
 
 describe("Foundry-published calculation runtime", () => {
-  it("lists both bounded diagnostic components from the immutable registry", () => {
+  it("shows MASS first and keeps legacy Kp out of the learner selector", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: "Select diagnostic component" })).toBeVisible();
-    expect(screen.getByRole("button", { name: /Kp from equilibrium amounts/ })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Kp from equilibrium amounts/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Stoichiometric product mass/ })).toBeVisible();
-    expect(screen.getByText("KP + MASS adapters · No LLM call")).toBeVisible();
+    expect(screen.getByText("MASS learner adapter · deterministic runtime")).toBeVisible();
     expect(screen.getByText("Generated from learning-foundry-demo. This runtime cannot edit component definitions.")).toBeVisible();
   });
 
@@ -32,4 +32,3 @@ describe("Foundry-published calculation runtime", () => {
     expect(screen.getByRole("heading", { name: "FORMULA" })).toBeVisible();
   });
 });
-
